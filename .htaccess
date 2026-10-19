@@ -1,0 +1,11 @@
+# Serve the existing static build when Hostinger deploys the repository root.
+RewriteEngine On
+
+# Keep the public homepage at / while reading the build's entry point.
+RewriteRule ^$ dist/index.html [L]
+
+# Resolve relative CSS, JavaScript, images, and PDFs from the same build.
+# Only rewrite to files that exist, so missing URLs remain normal 404s.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f
+RewriteRule ^(.+)$ dist/$1 [L]
