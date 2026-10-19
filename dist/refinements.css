@@ -1,0 +1,2 @@
+/* Keep the full printed card visible, including its title and footer. */
+.fan-center img { object-fit: contain; }
