@@ -287,8 +287,8 @@
     <p class="lead" data-i18n="hab.lead"></p>
     <span class="swipe-hint" data-i18n="hab.swipe"></span>
     <div class="cards4">
-      <div class="gcard"><img src="img/card-ocean.jpg" width="366" height="603" loading="lazy" alt="丑角蝦"><span class="tag t-ocean" data-i18n="hab.ocean"></span><p><b data-i18n="hab.ocean.n"></b><span data-i18n="hab.ocean.s"></span></p></div>
-      <div class="gcard"><img src="img/card-foret.jpg" width="366" height="603" loading="lazy" alt="臺灣夜鷹鴉"><span class="tag t-forest" data-i18n="hab.forest"></span><p><b data-i18n="hab.forest.n"></b><span data-i18n="hab.forest.s"></span></p></div>
+      <div class="gcard"><img src="img/card-ocean.jpg" width="366" height="603" loading="lazy" alt="綠蠵龜"><span class="tag t-ocean" data-i18n="hab.ocean"></span><p><b data-i18n="hab.ocean.n"></b><span data-i18n="hab.ocean.s"></span></p></div>
+      <div class="gcard"><img src="img/card-foret.jpg" width="366" height="603" loading="lazy" alt="五色鳥"><span class="tag t-forest" data-i18n="hab.forest"></span><p><b data-i18n="hab.forest.n"></b><span data-i18n="hab.forest.s"></span></p></div>
       <div class="gcard"><img src="img/card-prairie.jpg" width="366" height="603" loading="lazy" alt="臺灣梅花鹿"><span class="tag t-prairie" data-i18n="hab.grass"></span><p><b data-i18n="hab.grass.n"></b><span data-i18n="hab.grass.s"></span></p></div>
       <div class="gcard"><img src="img/card-montagne.jpg" width="366" height="603" loading="lazy" alt="臺灣黑熊"><span class="tag t-mountain" data-i18n="hab.mountain"></span><p><b data-i18n="hab.mountain.n"></b><span data-i18n="hab.mountain.s"></span></p></div>
     </div>
@@ -502,8 +502,8 @@ document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click'
 document.addEventListener('langchange', () => {
   renderCountries(); renderQuote(); renderMsgs(); renderBanner();
   document.title = t('meta.title');
-  const alts = {en: ['Harlequin shrimp card','Frogmouth card','Formosan sika deer card','Formosan black bear card','Box of 灣灣好日子 Wildlife Edition','Formosan black bear, the game\'s mascot'],
-                zh: ['丑角蝦卡片','臺灣夜鷹鴉卡片','臺灣梅花鹿卡片','臺灣黑熊卡片','灣灣好日子 野生動物版 遊戲盒','臺灣黑熊，遊戲的吉祥物']}[I18N.lang];
+  const alts = {en: ['Green sea turtle card','Taiwan barbet card','Formosan sika deer card','Formosan black bear card','Box of 灣灣好日子 Wildlife Edition','Formosan black bear, the game\'s mascot'],
+                zh: ['綠蠵龜卡片','五色鳥卡片','臺灣梅花鹿卡片','臺灣黑熊卡片','灣灣好日子 野生動物版 遊戲盒','臺灣黑熊，遊戲的吉祥物']}[I18N.lang];
   document.querySelectorAll('.gcard img').forEach((im, i) => im.alt = alts[i]);
   document.querySelector('img.box').alt = alts[4];
   document.querySelector('img.bear').alt = alts[5];
