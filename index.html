@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="zh-TW" data-has-title>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#cfeadf">
+<title>灣灣好日子 野生動物版｜認識台灣動物的親子桌遊</title>
+<meta name="description" content="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Huninn&family=Nunito:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ Charte (tirée des cartes et de la boîte) ============ */
+  /* MOBILE FIRST : les styles de base sont ceux du téléphone ; les @media (min-width) enrichissent. */
+  :root{
+    --ocean:#4abd99;  --forest:#1b9344;  --prairie:#fbaa35;  --mountain:#00a7cb;
+    --s-weight:#f47736; --s-speed:#2ca8e0; --s-length:#47b966; --s-life:#e570ab;
+    --ink:#1d3a33; --ink-soft:#47665d;
+    --mist:#eaf6f1; --paper:#fffdf8; --line:#d6e6df;
+    --cta:#e8651f; --cta-d:#c9500f;
+    --radius:18px; --gut:16px; --tap:48px;
+  }
+  html:lang(zh-TW){--display:"Huninn","Noto Sans TC",system-ui,sans-serif;--body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;--dw:400;--lh:1.8}
+  html:lang(en){--display:"Fredoka","Huninn",system-ui,sans-serif;--body:"Nunito","Noto Sans TC",system-ui,-apple-system,"Segoe UI",sans-serif;--dw:600;--lh:1.6}
+  @media(min-width:600px){:root{--gut:24px}}
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{margin:0;font-family:var(--body);font-size:1rem;color:var(--ink);background:var(--paper);line-height:var(--lh);overflow-x:hidden}
+  [hidden]{display:none!important}
+  img{max-width:100%;height:auto;display:block}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 var(--gut)}
+  h1,h2,h3{font-family:var(--display);font-weight:var(--dw);line-height:1.25;margin:0;text-wrap:balance}
+  h2{font-size:clamp(1.55rem,6.2vw,2.3rem);margin-bottom:10px}
+  .zh{font-family:"Noto Sans TC",var(--body);font-weight:700}
+  .lead{color:var(--ink-soft);font-size:1.02rem;max-width:660px;text-wrap:pretty}
+  @media(min-width:600px){.lead{font-size:1.1rem}}
+  .center{text-align:center} .center .lead{margin-inline:auto}
+  section{position:relative}
+  .sec{padding:52px 0}
+  @media(min-width:820px){.sec{padding:76px 0}}
+
+  /* Boutons : orange "poids" des cartes. Cible tactile >= 48px */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:var(--tap);background:var(--cta);color:#fff;border:0;border-radius:999px;padding:0 28px;font-family:var(--display);font-weight:var(--dw);font-size:1.1rem;cursor:pointer;text-decoration:none;box-shadow:0 5px 0 var(--cta-d);transition:transform .08s,box-shadow .08s;touch-action:manipulation}
+  .btn:active{transform:translateY(5px);box-shadow:0 0 0 var(--cta-d)}
+  .btn:disabled{opacity:.65;cursor:wait}
+  @media(hover:hover){.btn:hover{transform:translateY(2px);box-shadow:0 3px 0 var(--cta-d)}}
+  :focus-visible{outline:3px solid var(--mountain);outline-offset:3px;border-radius:8px}
+
+  .tag{display:inline-block;border:3px solid #fff;border-radius:999px;padding:1px 14px;font-family:var(--display);font-weight:var(--dw);font-size:.95rem;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  .t-ocean{background:var(--ocean)} .t-forest{background:var(--forest)} .t-prairie{background:var(--prairie)} .t-mountain{background:var(--mountain)}
+
+  .test-banner{background:var(--ink);color:#fff;text-align:center;font-size:.75rem;padding:6px var(--gut);letter-spacing:.2px}
+
+  /* ---- Nav + drapeaux (zone tactile 44px) ---- */
+  .nav{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0}
+  .brand{font-family:var(--display);font-weight:var(--dw);font-size:1.1rem;color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap;min-height:44px}
+  .brand .dot{width:30px;height:30px;border-radius:10px;background:conic-gradient(var(--ocean) 0 25%,var(--forest) 0 50%,var(--prairie) 0 75%,var(--mountain) 0);display:inline-block;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+  .brand small{display:none;font:700 .95rem "Noto Sans TC";color:var(--ink-soft)}
+  .nav-right{display:flex;align-items:center;gap:2px}
+  .langs{display:flex}
+  .flagbtn{width:44px;height:44px;padding:0;border:0;background:none;cursor:pointer;display:grid;place-items:center;border-radius:12px;opacity:.6;transition:opacity .15s;touch-action:manipulation}
+  .flagbtn svg{width:30px;height:20px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .flagbtn[aria-pressed="true"]{opacity:1}
+  .flagbtn[aria-pressed="true"] svg{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--ocean)}
+  .nav .btn{min-height:44px;padding:0 16px;font-size:.95rem;box-shadow:0 3px 0 var(--cta-d);margin-left:4px}
+  @media(min-width:520px){.brand small{display:inline}.nav .btn{padding:0 22px}.flagbtn svg{width:36px;height:24px}}
+
+  /* ---- Hero ---- */
+  .hero{background:radial-gradient(700px 360px at 85% 6%,rgba(255,255,255,.75),transparent 60%),linear-gradient(180deg,#cfeadf 0%,#e6f5ee 70%,var(--mist) 100%);position:relative;overflow:hidden}
+  .hero-grid{display:grid;gap:28px;align-items:center;padding:10px 0 64px;grid-template-columns:minmax(0,1fr)}
+  .eyebrow{display:inline-flex;flex-wrap:wrap;gap:4px 10px;align-items:center;background:#fff;border-radius:999px;padding:5px 14px 5px 6px;font-weight:700;font-size:.85rem;box-shadow:0 2px 8px rgba(29,58,51,.1);margin-bottom:14px}
+  .eyebrow b{background:var(--ocean);color:#fff;border-radius:999px;padding:1px 12px;font-family:"Noto Sans TC"}
+  .hero h1{font-size:clamp(2rem,9vw,3.5rem);margin-bottom:12px}
+  .hero h1 em{font-style:normal;color:var(--forest);white-space:nowrap}
+  .hero .lead{margin-bottom:20px}
+  .cta-row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+  .cta-row .btn{flex:1 1 100%}
+  .price-note{font-weight:700;color:var(--ink-soft);flex:1 1 100%;text-align:center}
+  .price-note strong{font-family:var(--display);font-weight:var(--dw);font-size:1.6rem;color:var(--ink)}
+  .facts{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 0;padding:0;list-style:none}
+  .facts li{background:rgba(255,255,255,.88);border-radius:12px;padding:5px 12px;font-weight:700;font-size:.9rem}
+  .hero-visual{position:relative;justify-self:center;width:min(250px,66vw);margin-top:6px}
+  .hero-visual img.box{border-radius:20px;border:5px solid #fff;box-shadow:0 18px 40px rgba(29,58,51,.28);transform:rotate(2.5deg)}
+  .hero-visual .mini{position:absolute;width:70px;border-radius:10px;border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+  .hero-visual .m1{left:-22px;bottom:28px;transform:rotate(-9deg)}
+  .hero-visual .m2{right:-18px;top:30px;transform:rotate(8deg)}
+  .wave{display:block;width:100%;height:44px;position:absolute;bottom:-1px;left:0}
+  @media(min-width:520px){
+    .cta-row .btn{flex:0 0 auto}
+    .price-note{flex:0 1 auto;text-align:left}
+  }
+  @media(min-width:820px){
+    .hero-grid{grid-template-columns:1.1fr .9fr;gap:36px;padding:16px 0 90px}
+    .eyebrow{font-size:.9rem}
+    .hero .lead{margin-bottom:26px}
+    .facts li{font-size:.95rem;padding:6px 14px}
+    .hero-visual{width:min(330px,76vw);margin-top:0}
+    .hero-visual img.box{border-width:6px;border-radius:22px}
+    .hero-visual .mini{width:96px;border-width:4px;border-radius:12px}
+    .hero-visual .m1{left:-46px;bottom:34px} .hero-visual .m2{right:-34px;top:40px}
+    .wave{height:60px}
+  }
+
+  /* ---- Les 4 raisons ---- */
+  .vals{display:grid;gap:14px;margin-top:28px;grid-template-columns:minmax(0,1fr);text-align:left}
+  .val{background:#fff;border:2px solid var(--line);border-radius:var(--radius);padding:18px 16px 18px 22px;position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:start}
+  .val::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--c)}
+  .val .ico{grid-row:1 / span 2;width:46px;height:46px;border-radius:14px;background:var(--c);color:#fff;display:grid;place-items:center;font-size:1.4rem;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+  .val h3{font-size:1.2rem;align-self:center}
+  .val p{margin:0;color:var(--ink-soft);font-size:.98rem;line-height:1.7}
+  @media(min-width:700px){
+    .vals{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:36px}
+    .val{display:block;padding:24px 22px 24px 26px}
+    .val .ico{width:52px;height:52px;font-size:1.6rem;margin-bottom:12px}
+    .val h3{font-size:1.3rem;margin-bottom:8px}
+    .val p{font-size:1rem}
+  }
+
+  /* ---- Habitats : carrousel tactile sur mobile, grille ensuite ---- */
+  .cards4{display:flex;gap:14px;margin:26px calc(var(--gut) * -1) 0;padding:6px var(--gut) 16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 var(--gut);-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain}
+  .cards4::-webkit-scrollbar{display:none}
+  .gcard{flex:0 0 64%;max-width:250px;scroll-snap-align:center;text-align:center}
+  .gcard img{border-radius:14px;box-shadow:0 10px 22px rgba(29,58,51,.2)}
+  .gcard .tag{margin-top:14px}
+  .gcard p{margin:6px 0 0;font-size:.9rem;color:var(--ink-soft);line-height:1.5}
+  .gcard p b{display:block;color:var(--ink);font-size:1.05rem;font-family:"Noto Sans TC",var(--body)}
+  .swipe-hint{display:block;font-size:.8rem;color:var(--ink-soft);margin-top:2px}
+  @media(min-width:760px){
+    .cards4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;margin:38px 0 0;padding:0;overflow:visible}
+    .gcard{flex:none;max-width:none}
+    .gcard:nth-child(odd) img{transform:rotate(-2deg)} .gcard:nth-child(even) img{transform:rotate(2deg)}
+    .gcard img{transition:transform .2s;box-shadow:0 12px 26px rgba(29,58,51,.2)}
+    .swipe-hint{display:none}
+  }
+  @media(min-width:760px) and (hover:hover){.gcard:hover img{transform:rotate(0) translateY(-6px)}}
+
+  /* ---- Stats ---- */
+  .stats{display:grid;gap:10px;margin-top:26px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat{border-radius:18px;color:#fff;text-align:center;padding:16px 8px 12px;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+  .stat .ico{font-size:1.4rem}
+  .stat .n{font-family:var(--display);font-weight:var(--dw);font-size:2.1rem;line-height:1.2;margin-top:2px}
+  .stat .l{font-weight:700}
+  .stat .u{font-size:.85rem;opacity:.95}
+  .stat .ex{font-size:.8rem;opacity:.95;margin-top:8px;border-top:1px dashed rgba(255,255,255,.6);padding-top:8px}
+  .stat.w{background:var(--s-weight)} .stat.s{background:var(--s-speed)} .stat.g{background:var(--s-length)} .stat.v{background:var(--s-life)}
+  @media(min-width:760px){.stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:34px}.stat{padding:20px 10px 14px;box-shadow:0 8px 0 rgba(0,0,0,.12)}.stat .n{font-size:2.3rem}}
+
+  /* ---- Règles ---- */
+  .rules{background:linear-gradient(180deg,var(--mist),#dff1e8)}
+  .rules-grid{display:grid;gap:22px;align-items:start;margin-top:26px;grid-template-columns:minmax(0,1fr)}
+  ol.steps{list-style:none;counter-reset:s;margin:0;padding:0;display:grid;gap:10px}
+  ol.steps li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 4px 14px rgba(29,58,51,.08)}
+  ol.steps li::before{content:counter(s);flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:var(--dw);font-size:1.1rem;margin-top:2px}
+  ol.steps li:nth-child(1)::before{background:var(--ocean)} ol.steps li:nth-child(2)::before{background:var(--forest)}
+  ol.steps li:nth-child(3)::before{background:var(--prairie)} ol.steps li:nth-child(4)::before{background:var(--mountain)}
+  ol.steps li:nth-child(5)::before{background:var(--s-life)} ol.steps li:nth-child(6)::before{background:var(--s-weight)}
+  ol.steps b{font-family:var(--display);font-weight:var(--dw);font-size:1.08rem;display:block}
+  ol.steps span{color:var(--ink-soft);display:block;line-height:1.65;font-size:.98rem}
+  .duel{background:#fff;border-radius:var(--radius);border:5px solid #fff;box-shadow:0 14px 34px rgba(29,58,51,.18);overflow:hidden}
+  .duel header{background:var(--ink);color:#fff;font-family:var(--display);font-weight:var(--dw);padding:10px 16px}
+  .duel .vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;padding:16px 12px 8px;text-align:center}
+  .duel .vs span{font-family:var(--display);font-weight:var(--dw);color:var(--ink-soft)}
+  .duel .pick{margin:6px 12px 0;border-radius:14px;padding:10px;text-align:center;color:#fff;background:var(--s-weight);font-weight:800}
+  .duel .res{padding:12px 16px 16px;text-align:center;color:var(--ink-soft);font-size:.95rem}
+  .duel .res b{color:var(--forest)}
+  @media(min-width:820px){.rules-grid{grid-template-columns:1.25fr .75fr;gap:34px;margin-top:34px}ol.steps{gap:12px}ol.steps li{gap:16px;padding:14px 18px}ol.steps li::before{width:40px;height:40px;font-size:1.2rem}}
+
+  /* ---- À propos ---- */
+  .about-grid{display:grid;gap:24px;align-items:center;grid-template-columns:minmax(0,1fr)}
+  .about-grid img.bear{border-radius:24px;border:5px solid #fff;box-shadow:0 16px 38px rgba(29,58,51,.22);width:min(300px,86%);margin-inline:auto;transform:rotate(-1.5deg)}
+  ul.ticks{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:12px}
+  ul.ticks li{display:flex;gap:12px;align-items:flex-start}
+  ul.ticks li::before{content:"✓";flex:none;width:26px;height:26px;border-radius:50%;background:var(--forest);color:#fff;display:grid;place-items:center;font-weight:800;font-size:.9rem;margin-top:5px}
+  @media(min-width:820px){.about-grid{grid-template-columns:.85fr 1.15fr;gap:34px}.about-grid img.bear{width:min(420px,100%);border-width:6px}}
+
+  /* ---- Commande : formulaire pensé pour le pouce ---- */
+  .order-sec{background:var(--forest);scroll-margin-top:8px}
+  .order-sec h2{color:#fff}
+  .order-sec .lead{color:#e6f5ea}
+  .order{margin-top:22px;background:#fff;border:5px solid #fff;border-radius:22px;box-shadow:0 22px 50px rgba(0,0,0,.28);overflow:hidden}
+  .order > .bar{background:var(--ink);color:#fff;padding:12px 16px;font-family:var(--display);font-weight:var(--dw);font-size:1.05rem;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .cols{display:grid;gap:22px;padding:6px 16px 22px;grid-template-columns:minmax(0,1fr)}
+  label{display:block;font-size:.92rem;font-weight:700;margin:14px 0 6px;color:var(--ink)}
+  input,select{width:100%;min-height:var(--tap);padding:10px 14px;border:2px solid var(--line);border-radius:12px;font:500 16px/1.3 var(--body);background:#fff;color:var(--ink);appearance:none;-webkit-appearance:none}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%2347665d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+  input:focus,select:focus{outline:none;border-color:var(--mountain);box-shadow:0 0 0 4px rgba(0,167,203,.18)}
+  .row2{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}
+  .promo{display:flex;gap:8px}
+  .promo input{flex:1;min-width:0}
+  .promo button{white-space:nowrap;min-height:var(--tap);border:2px solid var(--mountain);color:var(--mountain);background:#fff;border-radius:12px;padding:0 18px;font-family:var(--display);font-weight:var(--dw);font-size:1rem;cursor:pointer;touch-action:manipulation}
+  .promo button:active{background:var(--mountain);color:#fff}
+  .summary{background:var(--mist);border-radius:16px;padding:16px}
+  .summary .line{display:flex;justify-content:space-between;margin:8px 0;font-weight:700}
+  .summary .total{font-family:var(--display);font-weight:var(--dw);font-size:1.45rem;border-top:2px dashed #b9d6ca;padding-top:12px;margin-top:12px}
+  .shipnote{color:var(--ink-soft);font-size:.85rem;margin-top:8px;line-height:1.6}
+  .twd{color:var(--ink-soft);font-size:.82rem;margin-top:10px;line-height:1.6}
+  .msg{margin-top:10px;font-size:.92rem;font-weight:700} .msg.err{color:#c0392b} .msg.ok{color:var(--forest)}
+  .secure{font-size:.82rem;color:var(--ink-soft);margin-top:14px;text-align:center;line-height:1.6}
+  @media(min-width:600px){.order{border-width:7px;border-radius:26px;margin-top:30px}.order > .bar{padding:14px 24px;font-size:1.1rem}.cols{padding:10px 24px 30px;gap:28px}.summary{padding:20px}.row2{grid-template-columns:1fr 2fr}}
+  @media(min-width:800px){.cols{grid-template-columns:1.25fr 1fr}.summary{align-self:start;margin-top:14px}}
+
+  /* ---- FAQ ---- */
+  details{background:#fff;border:2px solid var(--line);border-radius:16px;padding:4px 16px;margin-bottom:10px}
+  details[open]{border-color:var(--ocean)}
+  summary{cursor:pointer;font-family:var(--display);font-weight:var(--dw);font-size:1.05rem;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:52px;touch-action:manipulation}
+  summary::after{content:"+";color:var(--ocean);font-size:1.5rem;line-height:1;flex:none}
+  details[open] summary::after{content:"–"}
+  summary::-webkit-details-marker{display:none}
+  details p{margin:0 0 14px;color:var(--ink-soft)}
+
+  footer{background:var(--ink);color:#c9ddd5;padding:32px 0 calc(96px + env(safe-area-inset-bottom));font-size:.88rem;line-height:1.8}
+  footer a{color:#fff;display:inline-flex;align-items:center;min-height:44px;padding:0 8px}
+  footer .pub{margin-top:6px;opacity:.85}
+  @media(min-width:820px){footer{padding:38px 0}}
+
+  /* ---- Barre de commande fixe (mobile) : apparaît quand le bouton du haut a défilé ---- */
+  .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px var(--gut) calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(29,58,51,.14);transform:translateY(115%);transition:transform .25s ease;visibility:hidden}
+  .sticky-cta.show{transform:none;visibility:visible}
+  .sticky-cta .p{font-family:var(--display);font-weight:var(--dw);font-size:1.4rem;line-height:1.1}
+  .sticky-cta .p small{display:block;font:600 .75rem var(--body);color:var(--ink-soft)}
+  .sticky-cta .btn{flex:1;max-width:260px}
+  @media(min-width:820px){.sticky-cta{display:none}}
+
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="test-banner" id="banner" hidden></div>
+
+<!-- ===================== HERO ===================== -->
+<header class="hero">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="#"><span class="dot" aria-hidden="true"></span>WanWan Play <small>萬玩</small></a>
+      <div class="nav-right">
+        <div class="langs" role="group" aria-label="Language / 語言">
+          <button class="flagbtn" type="button" data-lang="zh" aria-pressed="true" aria-label="繁體中文（台灣）" title="繁體中文"><svg viewBox="0 0 30 20" width="36" height="24" aria-hidden="true"><rect width="30" height="20" fill="#fe0000"/><rect width="15" height="10" fill="#000095"/><polygon points="7.50,0.40 8.10,2.78 9.80,1.02 9.13,3.37 11.48,2.70 9.72,4.40 12.10,5.00 9.72,5.60 11.48,7.30 9.13,6.63 9.80,8.98 8.10,7.22 7.50,9.60 6.90,7.22 5.20,8.98 5.87,6.63 3.52,7.30 5.28,5.60 2.90,5.00 5.28,4.40 3.52,2.70 5.87,3.37 5.20,1.02 6.90,2.78" fill="#fff"/><circle cx="7.5" cy="5" r="1.95" fill="#000095"/><circle cx="7.5" cy="5" r="1.55" fill="#fff"/></svg></button>
+          <button class="flagbtn" type="button" data-lang="en" aria-pressed="false" aria-label="English" title="English"><svg viewBox="0 0 30 20" width="36" height="24" aria-hidden="true"><rect y="0.000" width="30" height="1.558" fill="#b22234"/><rect y="1.538" width="30" height="1.558" fill="#fff"/><rect y="3.077" width="30" height="1.558" fill="#b22234"/><rect y="4.615" width="30" height="1.558" fill="#fff"/><rect y="6.154" width="30" height="1.558" fill="#b22234"/><rect y="7.692" width="30" height="1.558" fill="#fff"/><rect y="9.231" width="30" height="1.558" fill="#b22234"/><rect y="10.769" width="30" height="1.558" fill="#fff"/><rect y="12.308" width="30" height="1.558" fill="#b22234"/><rect y="13.846" width="30" height="1.558" fill="#fff"/><rect y="15.385" width="30" height="1.558" fill="#b22234"/><rect y="16.923" width="30" height="1.558" fill="#fff"/><rect y="18.462" width="30" height="1.558" fill="#b22234"/><rect width="12.6" height="10.77" fill="#3c3b6e"/><circle cx="1.40" cy="1.30" r=".36" fill="#fff"/><circle cx="3.60" cy="1.30" r=".36" fill="#fff"/><circle cx="5.80" cy="1.30" r=".36" fill="#fff"/><circle cx="8.00" cy="1.30" r=".36" fill="#fff"/><circle cx="10.20" cy="1.30" r=".36" fill="#fff"/><circle cx="2.50" cy="2.80" r=".36" fill="#fff"/><circle cx="4.70" cy="2.80" r=".36" fill="#fff"/><circle cx="6.90" cy="2.80" r=".36" fill="#fff"/><circle cx="9.10" cy="2.80" r=".36" fill="#fff"/><circle cx="1.40" cy="4.30" r=".36" fill="#fff"/><circle cx="3.60" cy="4.30" r=".36" fill="#fff"/><circle cx="5.80" cy="4.30" r=".36" fill="#fff"/><circle cx="8.00" cy="4.30" r=".36" fill="#fff"/><circle cx="10.20" cy="4.30" r=".36" fill="#fff"/><circle cx="2.50" cy="5.80" r=".36" fill="#fff"/><circle cx="4.70" cy="5.80" r=".36" fill="#fff"/><circle cx="6.90" cy="5.80" r=".36" fill="#fff"/><circle cx="9.10" cy="5.80" r=".36" fill="#fff"/><circle cx="1.40" cy="7.30" r=".36" fill="#fff"/><circle cx="3.60" cy="7.30" r=".36" fill="#fff"/><circle cx="5.80" cy="7.30" r=".36" fill="#fff"/><circle cx="8.00" cy="7.30" r=".36" fill="#fff"/><circle cx="10.20" cy="7.30" r=".36" fill="#fff"/><circle cx="2.50" cy="8.80" r=".36" fill="#fff"/><circle cx="4.70" cy="8.80" r=".36" fill="#fff"/><circle cx="6.90" cy="8.80" r=".36" fill="#fff"/><circle cx="9.10" cy="8.80" r=".36" fill="#fff"/></svg></button>
+        </div>
+        <a class="btn" href="#order" data-i18n="nav.order">立即訂購</a>
+      </div>
+    </nav>
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow"><b data-i18n="hero.badge">野生動物版</b><span data-i18n="hero.eyebrow">台灣公司・方元創意出品</span></div>
+        <h1 data-i18n-html="hero.h1">誰是台灣<em>最厲害</em>的動物？</h1>
+        <p class="lead" data-i18n-html="hero.lead"></p>
+        <div class="cta-row">
+          <a class="btn" href="#order" data-i18n="hero.cta">立即訂購</a>
+          <span class="price-note"><strong class="price-label">€19.90</strong> · <span data-i18n="hero.ship">宅配到府</span></span>
+        </div>
+        <ul class="facts">
+          <li>👨‍👩‍👧 <span data-i18n="fact.players">2–6 人</span></li>
+          <li>⏱ <span data-i18n="fact.time">約 20 分鐘</span></li>
+          <li>🎂 <span data-i18n="fact.age">5 歲以上</span></li>
+        </ul>
+      </div>
+      <div class="hero-visual">
+        <img class="box" src="img/box-front.jpg" width="560" height="912" fetchpriority="high" alt="灣灣好日子 野生動物版">
+        <img class="mini m1" src="img/card-ocean.jpg" alt="" aria-hidden="true">
+        <img class="mini m2" src="img/card-prairie.jpg" alt="" aria-hidden="true">
+      </div>
+    </div>
+  </div>
+  <svg class="wave" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true"><path fill="#eaf6f1" d="M0 30C180 70 360 0 720 28s540 36 720 0V60H0z"/></svg>
+</header>
+
+<!-- ===================== 4 RAISONS ===================== -->
+<section class="sec" style="background:var(--mist)">
+  <div class="wrap center">
+    <h2 data-i18n="val.h"></h2>
+    <p class="lead" data-i18n="val.lead"></p>
+    <div class="vals" style="text-align:left">
+      <article class="val" style="--c:var(--ocean)"><div class="ico" aria-hidden="true">🐾</div><h3 data-i18n="val.1.t"></h3><p data-i18n="val.1.d"></p></article>
+      <article class="val" style="--c:var(--prairie)"><div class="ico" aria-hidden="true">🏞️</div><h3 data-i18n="val.2.t"></h3><p data-i18n="val.2.d"></p></article>
+      <article class="val" style="--c:var(--forest)"><div class="ico" aria-hidden="true">💚</div><h3 data-i18n="val.3.t"></h3><p data-i18n="val.3.d"></p></article>
+      <article class="val" style="--c:var(--mountain)"><div class="ico" aria-hidden="true">📖</div><h3 data-i18n="val.4.t"></h3><p data-i18n="val.4.d"></p></article>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== HABITATS ===================== -->
+<section class="sec">
+  <div class="wrap center">
+    <h2 data-i18n="hab.h"></h2>
+    <p class="lead" data-i18n="hab.lead"></p>
+    <span class="swipe-hint" data-i18n="hab.swipe"></span>
+    <div class="cards4">
+      <div class="gcard"><img src="img/card-ocean.jpg" width="366" height="603" loading="lazy" alt="丑角蝦"><span class="tag t-ocean" data-i18n="hab.ocean"></span><p><b data-i18n="hab.ocean.n"></b><span data-i18n="hab.ocean.s"></span></p></div>
+      <div class="gcard"><img src="img/card-foret.jpg" width="366" height="603" loading="lazy" alt="臺灣夜鷹鴉"><span class="tag t-forest" data-i18n="hab.forest"></span><p><b data-i18n="hab.forest.n"></b><span data-i18n="hab.forest.s"></span></p></div>
+      <div class="gcard"><img src="img/card-prairie.jpg" width="366" height="603" loading="lazy" alt="臺灣梅花鹿"><span class="tag t-prairie" data-i18n="hab.grass"></span><p><b data-i18n="hab.grass.n"></b><span data-i18n="hab.grass.s"></span></p></div>
+      <div class="gcard"><img src="img/card-montagne.jpg" width="366" height="603" loading="lazy" alt="臺灣黑熊"><span class="tag t-mountain" data-i18n="hab.mountain"></span><p><b data-i18n="hab.mountain.n"></b><span data-i18n="hab.mountain.s"></span></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== STATS ===================== -->
+<section class="sec" style="background:#fff">
+  <div class="wrap center">
+    <h2 data-i18n="stat.h"></h2>
+    <p class="lead" data-i18n="stat.lead"></p>
+    <div class="stats">
+      <div class="stat w"><div class="ico" aria-hidden="true">⚖️</div><div class="n">200</div><div class="l" data-i18n="stat.w"></div><div class="u" data-i18n="stat.w.u"></div><div class="ex" data-i18n="stat.bear"></div></div>
+      <div class="stat s"><div class="ico" aria-hidden="true">💨</div><div class="n">60</div><div class="l" data-i18n="stat.s"></div><div class="u" data-i18n="stat.s.u"></div><div class="ex" data-i18n="stat.frog"></div></div>
+      <div class="stat g"><div class="ico" aria-hidden="true">📏</div><div class="n">180</div><div class="l" data-i18n="stat.g"></div><div class="u" data-i18n="stat.g.u"></div><div class="ex" data-i18n="stat.bear"></div></div>
+      <div class="stat v"><div class="ico" aria-hidden="true">💗</div><div class="n">25</div><div class="l" data-i18n="stat.v"></div><div class="u" data-i18n="stat.v.u"></div><div class="ex" data-i18n="stat.bear"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RÈGLES ===================== -->
+<section class="sec rules">
+  <div class="wrap">
+    <div class="center"><h2 data-i18n="rule.h"></h2><p class="lead" data-i18n="rule.lead"></p></div>
+    <div class="rules-grid">
+      <ol class="steps">
+        <li><div><b data-i18n="rule.1.t"></b><span data-i18n="rule.1.d"></span></div></li>
+        <li><div><b data-i18n="rule.2.t"></b><span data-i18n="rule.2.d"></span></div></li>
+        <li><div><b data-i18n="rule.3.t"></b><span data-i18n="rule.3.d"></span></div></li>
+        <li><div><b data-i18n="rule.4.t"></b><span data-i18n="rule.4.d"></span></div></li>
+        <li><div><b data-i18n="rule.5.t"></b><span data-i18n="rule.5.d"></span></div></li>
+        <li><div><b data-i18n="rule.6.t"></b><span data-i18n="rule.6.d"></span></div></li>
+      </ol>
+      <aside class="duel">
+        <header data-i18n="duel.h"></header>
+        <div class="vs"><div class="zh" data-i18n="duel.a"></div><span>VS</span><div class="zh" data-i18n="duel.b"></div></div>
+        <div class="pick">⚖️ <span data-i18n="duel.pick"></span></div>
+        <div class="res" data-i18n-html="duel.res"></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== À PROPOS ===================== -->
+<section class="sec">
+  <div class="wrap">
+    <div class="about-grid">
+      <img class="bear" src="img/bear.jpg" width="657" height="647" loading="lazy" alt="臺灣黑熊">
+      <div>
+        <h2 data-i18n="about.h"></h2>
+        <p class="lead" data-i18n="about.lead"></p>
+        <ul class="ticks">
+          <li><span data-i18n="about.1"></span></li>
+          <li><span data-i18n="about.2"></span></li>
+          <li><span data-i18n="about.3"></span></li>
+          <li><span data-i18n="about.4"></span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== COMMANDE ===================== -->
+<section class="sec order-sec" id="order">
+  <div class="wrap">
+    <div class="center"><h2 data-i18n="ord.h"></h2><p class="lead" data-i18n="ord.lead"></p></div>
+    <div class="order">
+      <div class="bar"><span data-i18n="ord.bar"></span><span class="tag t-ocean" data-i18n="ord.tag"></span></div>
+      <form id="form" class="cols" novalidate>
+        <div>
+          <label for="name" style="margin-top:0" data-i18n="f.name"></label><input id="name" name="name" autocomplete="name" enterkeyhint="next" required>
+          <label for="phone" data-i18n="f.phone"></label><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="next" placeholder="+33 6 12 34 56 78" required>
+          <label for="email" data-i18n="f.email"></label><input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" enterkeyhint="next" required>
+          <label for="address" data-i18n="f.address"></label><input id="address" name="address" autocomplete="street-address" enterkeyhint="next" required>
+          <div class="row2">
+            <div><label for="zip" data-i18n="f.zip"></label><input id="zip" name="zip" autocomplete="postal-code" autocapitalize="characters" enterkeyhint="next" required></div>
+            <div><label for="city" data-i18n="f.city"></label><input id="city" name="city" autocomplete="address-level2" enterkeyhint="done" required></div>
+          </div>
+          <label for="country" data-i18n="f.country"></label><select id="country" name="country" autocomplete="country" required></select>
+          <div class="shipnote" data-i18n="f.ship.note"></div>
+          <label for="promo" data-i18n="f.promo"></label>
+          <div class="promo"><input id="promo" name="promoCode" data-i18n-ph="f.promo.ph" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="done"><button type="button" id="applyPromo" data-i18n="f.apply"></button></div>
+          <div class="msg" id="promoMsg" role="status"></div>
+        </div>
+        <div class="summary">
+          <label for="qty" style="margin-top:0" data-i18n="f.qty"></label>
+          <select id="qty" name="quantity"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+          <div class="line" style="margin-top:16px"><span data-i18n="sum.sub"></span><span id="sub">—</span></div>
+          <div class="line" id="discLine" hidden><span data-i18n="sum.disc"></span><span id="disc">—</span></div>
+          <div class="line" id="shipLine" hidden><span data-i18n="sum.ship"></span><span id="ship">—</span></div>
+          <div class="line total"><span data-i18n="sum.total"></span><span id="total">—</span></div>
+          <div class="twd" id="twd"></div>
+          <button class="btn" id="pay" type="submit" style="width:100%;margin-top:18px" data-i18n="sum.pay"></button>
+          <div class="msg err" id="err" role="alert"></div>
+          <div class="secure" data-i18n="sum.secure"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="sec">
+  <div class="wrap" style="max-width:760px">
+    <h2 class="center" style="margin-bottom:26px" data-i18n="faq.h"></h2>
+    <details><summary data-i18n="faq.1.q"></summary><p data-i18n="faq.1.a"></p></details>
+    <details><summary data-i18n="faq.2.q"></summary><p data-i18n="faq.2.a"></p></details>
+    <details><summary data-i18n="faq.3.q"></summary><p data-i18n="faq.3.a"></p></details>
+    <details><summary data-i18n="faq.4.q"></summary><p data-i18n="faq.4.a"></p></details>
+    <details><summary data-i18n="faq.5.q"></summary><p data-i18n="faq.5.a"></p></details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span data-i18n="foot.main"></span> ·
+    <a href="#" data-i18n="foot.privacy"></a> · <a href="#" data-i18n="foot.terms"></a> · <a href="#" data-i18n="foot.contact"></a>
+    <div class="pub">www.wanwanplay.com</div>
+    <div class="pub" data-i18n="foot.todo"></div>
+  </div>
+</footer>
+
+<div class="sticky-cta" id="stickyCta" aria-hidden="true">
+  <div class="p"><span class="price-label">€19.90</span><small data-i18n="hero.ship"></small></div>
+  <a class="btn" href="#order" tabindex="-1" data-i18n="hero.cta"></a>
+</div>
+
+<script src="i18n.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const t = (k) => I18N.t(k);
+let appliedPromo = '';
+let lastQuote = null;
+let cfg = { simulation: true };
+let errCode = '', promoState = null;   // {kind:'ok'|'err', code?}
+
+function renderCountries() {
+  const sel = $('country'), cur = sel.value;
+  sel.innerHTML = '';
+  const ph = new Option(t('f.country.ph'), ''); ph.disabled = true; ph.selected = !cur; sel.add(ph);
+  COUNTRIES.forEach(([code, zh, en]) => sel.add(new Option(I18N.lang === 'en' ? en : zh, code)));
+  sel.value = cur || '';
+}
+function renderQuote() {
+  const q = lastQuote; if (!q) return;
+  $('sub').textContent = I18N.money(q.subtotalCents);
+  $('discLine').hidden = !q.discountCents;
+  $('disc').textContent = '− ' + I18N.money(q.discountCents);
+  $('shipLine').hidden = !q.shippingCents;
+  $('ship').textContent = I18N.money(q.shippingCents);
+  $('total').textContent = I18N.money(q.totalCents);
+  $('twd').textContent = t('sum.twd').replace('{n}', I18N.twd(q.totalTwd));
+}
+function renderMsgs() {
+  $('err').textContent = errCode ? t('err.' + errCode) : '';
+  const pm = $('promoMsg');
+  if (!promoState) { pm.textContent = ''; pm.className = 'msg'; }
+  else if (promoState.kind === 'ok') { pm.className = 'msg ok'; pm.textContent = t('promo.ok'); }
+  else { pm.className = 'msg err'; pm.textContent = t('err.' + promoState.code); }
+}
+function renderBanner() {
+  const b = $('banner'); b.hidden = false;
+  b.textContent = t(cfg.simulation ? 'banner.sim' : 'banner.np');
+}
+const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(async r => ({ok: r.ok, d: await r.json()}));
+
+async function refresh() {
+  errCode = '';
+  const {ok, d} = await post('/api/quote', {quantity: $('qty').value, promoCode: appliedPromo});
+  if (!ok) { appliedPromo = ''; promoState = {kind:'err', code: d.code}; renderMsgs(); return refreshNoPromo(); }
+  lastQuote = d; renderQuote(); renderMsgs();
+}
+async function refreshNoPromo() {
+  const {d} = await post('/api/quote', {quantity: $('qty').value, promoCode: ''});
+  lastQuote = d; renderQuote();
+}
+
+$('qty').addEventListener('change', refresh);
+$('applyPromo').addEventListener('click', async () => {
+  const code = $('promo').value.trim();
+  if (!code) { appliedPromo = ''; promoState = null; return refresh(); }
+  const {ok, d} = await post('/api/quote', {quantity: $('qty').value, promoCode: code});
+  if (!ok) { promoState = {kind:'err', code: d.code}; return renderMsgs(); }
+  appliedPromo = code; promoState = d.discountCents ? {kind:'ok'} : null;
+  lastQuote = d; renderQuote(); renderMsgs();
+});
+
+$('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errCode = ''; renderMsgs();
+  $('pay').disabled = true;
+  const body = Object.fromEntries(new FormData($('form')).entries());
+  body.promoCode = appliedPromo;
+  body.lang = I18N.lang;
+  try {
+    const {ok, d} = await post('/api/checkout', body);
+    if (!ok) { errCode = d.code || 'GENERIC'; renderMsgs(); $('pay').disabled = false; return; }
+    if (d.redirect) { location.href = d.redirect; return; }
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = d.form.action;
+    for (const [k, v] of Object.entries(d.form.fields)) {
+      const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; f.appendChild(i);
+    }
+    document.body.appendChild(f); f.submit();
+  } catch (err) {
+    errCode = 'GENERIC'; renderMsgs(); $('pay').disabled = false;
+  }
+});
+
+document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => I18N.set(b.dataset.lang)));
+document.addEventListener('langchange', () => {
+  renderCountries(); renderQuote(); renderMsgs(); renderBanner();
+  document.title = t('meta.title');
+  const alts = {en: ['Harlequin shrimp card','Frogmouth card','Formosan sika deer card','Formosan black bear card','Box of 灣灣好日子 Wildlife Edition','Formosan black bear, the game\'s mascot'],
+                zh: ['丑角蝦卡片','臺灣夜鷹鴉卡片','臺灣梅花鹿卡片','臺灣黑熊卡片','灣灣好日子 野生動物版 遊戲盒','臺灣黑熊，遊戲的吉祥物']}[I18N.lang];
+  document.querySelectorAll('.gcard img').forEach((im, i) => im.alt = alts[i]);
+  document.querySelector('img.box').alt = alts[4];
+  document.querySelector('img.bear').alt = alts[5];
+});
+
+fetch('/api/config').then(r => r.json()).then(c => {
+  cfg = c;
+  document.querySelectorAll('.price-label').forEach(el => el.textContent = I18N.money(c.priceCents));
+  renderBanner();
+});
+I18N.apply();
+refresh();
+
+// Barre de commande fixe : visible une fois le bouton du haut sorti de l'écran, masquée sur la section commande
+(function () {
+  const bar = $('stickyCta');
+  if (!('IntersectionObserver' in window)) return;
+  let heroCta = true, orderVisible = false;
+  const update = () => {
+    const show = !heroCta && !orderVisible;
+    bar.classList.toggle('show', show);
+    bar.setAttribute('aria-hidden', show ? 'false' : 'true');
+    bar.querySelector('a').tabIndex = show ? 0 : -1;
+  };
+  new IntersectionObserver(es => { heroCta = es[0].isIntersecting || es[0].boundingClientRect.top > 0; update(); }).observe(document.querySelector('.cta-row'));
+  new IntersectionObserver(es => { orderVisible = es[0].isIntersecting; update(); }, {threshold: 0.05}).observe($('order'));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title></title>
+<style>body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;max-width:480px;margin:80px auto;padding:0 20px;text-align:center;color:#1d3a33;line-height:1.8}a{color:#1b9344;font-weight:700}</style></head>
+<body>
+<h1 data-i18n="ko.t"></h1>
+<p data-i18n="ko.d"></p>
+<a href="/#order" id="back" data-i18n="ko.back"></a>
+<script src="i18n.js"></script>
+<script>
+document.addEventListener('langchange',()=>{document.title=I18N.t('ko.t');
+  document.getElementById('back').href='/?lang='+I18N.lang+'#order';});
+I18N.apply();
+</script>
+</body></html>
