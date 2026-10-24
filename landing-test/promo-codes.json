@@ -1,0 +1,4 @@
+[
+  { "code": "TEST10", "type": "percent", "value": 10, "maxUses": 100, "expires": "2026-12-31" },
+  { "code": "WELCOME5", "type": "amount_eur", "value": 5, "maxUses": 50, "expires": "2026-12-31" }
+]

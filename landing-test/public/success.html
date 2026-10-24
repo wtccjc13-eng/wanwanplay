@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>🎉</title>
+<style>body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;max-width:480px;margin:80px auto;padding:0 20px;text-align:center;color:#1d3a33;line-height:1.8}a{color:#1b9344;font-weight:700}</style></head>
+<body>
+<div style="font-size:3rem">🎉</div>
+<h1 data-i18n="ok.t"></h1>
+<p data-i18n="ok.d"></p>
+<p id="o" style="color:#47665d"></p>
+<a href="/" id="home" data-i18n="ok.back"></a>
+<script src="i18n.js"></script>
+<script>
+document.addEventListener('langchange',()=>{document.title=I18N.t('ok.t');
+  const o=new URLSearchParams(location.search).get('order'); if(o) document.getElementById('o').textContent=I18N.t('ok.ref')+o;
+  document.getElementById('home').href='/?lang='+I18N.lang;});
+I18N.apply();
+</script>
+</body></html>
