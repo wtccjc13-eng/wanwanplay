@@ -1,6 +1,6 @@
 {
   "project_id": "appgprj_6ad68d33a5e0819185a86d4c0aa13c28",
   "static": {
-    "directory": "dist"
+    "directory": "landing-test/public"
   }
 }
