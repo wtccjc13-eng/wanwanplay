@@ -96,7 +96,7 @@
       'faq.4.q': '付款方式與幣別？', 'faq.4.a': '網站以歐元（€）標價，目前提供信用卡付款。結帳時由藍新金流（NewebPay）以新台幣扣款，金額依參考匯率換算，帳單上的實際金額以你的發卡銀行匯率為準。',
       'faq.5.q': '優惠碼怎麼使用？', 'faq.5.a': '在訂購區輸入優惠碼，按「套用」，折扣就會顯示在總計裡。',
 
-      'foot.main': '© 2026 WanWan Play 萬玩・方元創意有限公司（Fangyuan Creative）',
+      'foot.main': '© 2026 WanWan Play 灣灣・方元創意有限公司（Fangyuan Creative）',
       'foot.privacy': '隱私權政策', 'foot.terms': '服務條款', 'foot.contact': '聯絡我們',
       'foot.todo': '[ 待補：統一編號、公司地址、客服信箱、歐盟 14 天猶豫期（退貨）與增值稅（VAT）說明 ]',
 
@@ -198,7 +198,7 @@
       'faq.4.q': 'Which currency and payment methods?', 'faq.4.a': 'Prices are in euros (€) and you pay by credit card. NewebPay processes the payment in New Taiwan dollars (NT$) at an indicative rate; your bank\'s own conversion applies to your statement.',
       'faq.5.q': 'How do I use a promo code?', 'faq.5.a': 'Enter it in the order section and press "Apply". The discount appears in your total.',
 
-      'foot.main': '© 2026 WanWan Play 萬玩 · Fangyuan Creative (方元創意有限公司)',
+      'foot.main': '© 2026 WanWan Play 灣灣 · Fangyuan Creative (方元創意有限公司)',
       'foot.privacy': 'Privacy policy', 'foot.terms': 'Terms', 'foot.contact': 'Contact',
       'foot.todo': '[ TBD: company tax ID (統一編號), address, support email, EU 14-day withdrawal right and VAT information ]',
 
