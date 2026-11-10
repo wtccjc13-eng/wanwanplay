@@ -422,7 +422,7 @@ const $ = (id) => document.getElementById(id);
 const t = (k) => I18N.t(k);
 let appliedPromo = '';
 let lastQuote = null;
-let cfg = { simulation: true };
+let cfg = { simulation: true, provider: 'simulation' };
 let errCode = '', promoState = null;   // {kind:'ok'|'err', code?}
 
 function renderCountries() {
@@ -440,7 +440,7 @@ function renderQuote() {
   $('shipLine').hidden = !q.shippingCents;
   $('ship').textContent = I18N.money(q.shippingCents);
   $('total').textContent = I18N.money(q.totalCents);
-  $('twd').textContent = t('sum.twd').replace('{n}', I18N.twd(q.totalTwd));
+  $('twd').textContent = cfg.provider === 'newebpay' ? t('sum.twd').replace('{n}', I18N.twd(q.totalTwd)) : '';
 }
 function renderMsgs() {
   $('err').textContent = errCode ? t('err.' + errCode) : '';
@@ -450,9 +450,18 @@ function renderMsgs() {
   else { pm.className = 'msg err'; pm.textContent = t('err.' + promoState.code); }
 }
 function renderBanner() {
-  const b = $('banner'); b.hidden = false;
-  b.textContent = t(cfg.simulation ? 'banner.sim' : 'banner.np');
+  const b = $('banner');
+  if (cfg.provider === 'airwallex' && cfg.airwallexEnv === 'prod') { b.hidden = true; return; }   // production : pas de bandeau test
+  b.hidden = false;
+  b.textContent = t(cfg.simulation ? 'banner.sim' : cfg.provider === 'airwallex' ? 'banner.aw' : 'banner.np');
 }
+const loadAirwallexSdk = () => new Promise((resolve, reject) => {
+  if (window.AirwallexComponentsSDK) return resolve();
+  const el = document.createElement('script');
+  el.src = 'https://static.airwallex.com/components/sdk/v1/index.js';
+  el.onload = resolve; el.onerror = reject;
+  document.head.appendChild(el);
+});
 const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(async r => ({ok: r.ok, d: await r.json()}));
 
 async function refresh() {
@@ -487,6 +496,19 @@ $('form').addEventListener('submit', async (e) => {
     const {ok, d} = await post('/api/checkout', body);
     if (!ok) { errCode = d.code || 'GENERIC'; renderMsgs(); $('pay').disabled = false; return; }
     if (d.redirect) { location.href = d.redirect; return; }
+    if (d.airwallex) {
+      // Airwallex Hosted Payment Page : cartes, Apple Pay, Google Pay sur une page hébergée par Airwallex
+      const a = d.airwallex;
+      await loadAirwallexSdk();
+      const { payments } = await window.AirwallexComponentsSDK.init({ env: a.env, enabledElements: ['payments'] });
+      payments.redirectToCheckout({
+        intent_id: a.intentId, client_secret: a.clientSecret, currency: a.currency, mode: 'payment',
+        locale: a.locale, successUrl: a.successUrl, failUrl: a.failUrl,
+        applePayRequestOptions: { countryCode: a.countryCode },
+        googlePayRequestOptions: { countryCode: a.countryCode },
+      });
+      return;
+    }
     const f = document.createElement('form');
     f.method = 'POST'; f.action = d.form.action;
     for (const [k, v] of Object.entries(d.form.fields)) {

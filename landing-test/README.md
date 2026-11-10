@@ -14,6 +14,17 @@ npm start                # http://localhost:3000
 - **Mode simulation** (clés vides) : fausse page de paiement pour valider ou annuler. Aucun appel à NewebPay.
 - **Mode NewebPay test** : renseigner `NEWEBPAY_MERCHANT_ID`, `NEWEBPAY_HASH_KEY` (32 car.), `NEWEBPAY_HASH_IV` (16 car.) d'un compte de **test** (https://cwww.newebpay.com). `BASE_URL` doit être une URL publique (ex. tunnel ngrok), sinon NewebPay ne peut pas appeler `/payment/notify`.
 
+## Paiement Airwallex (Vercel)
+
+Le serveur choisit le moyen de paiement : **Airwallex** si `AIRWALLEX_CLIENT_ID` et `AIRWALLEX_API_KEY` sont définis, sinon NewebPay, sinon simulation.
+
+1. `POST /api/checkout` crée la commande, recalcule le prix et le code promo côté serveur, puis crée un PaymentIntent Airwallex (montant en **euros**, unités principales).
+2. Le navigateur est redirigé vers la page de paiement hébergée par Airwallex (Visa, Mastercard, Apple Pay, Google Pay).
+3. `POST /airwallex/webhook` (événement `payment_intent.succeeded`) est la **seule** validation du paiement : signature vérifiée, PaymentIntent relu via l'API, montant et devise comparés, puis commande marquée payée et code promo consommé (une seule fois).
+4. Sur Vercel, définir une base Redis (Upstash) : sinon les commandes sont perdues entre deux exécutions.
+
+Variables : voir `.env.example`. Test local sans compte : laisser les clés vides (mode simulation).
+
 ## Langues
 
 - Tous les textes sont dans `public/i18n.js` (clés `zh` et `en`). Pour modifier un texte, éditer là.
