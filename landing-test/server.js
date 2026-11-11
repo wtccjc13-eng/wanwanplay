@@ -40,8 +40,9 @@ const RATE = parseFloat(EUR_TWD_RATE);                              // 1 EUR = R
 const COUNTRIES = ['FR','BE','CH','LU','DE','NL','IT','ES','PT','GB','IE','AT','DK','SE','FI','NO','PL','CZ','SK','HU','SI','HR','RO','BG','GR','CY','MT','EE','LV','LT'];
 
 // ---------- Stockage ----------
-// Sur Vercel le disque est éphémère : on utilise une base Redis (Upstash, via Vercel Marketplace) si
-// UPSTASH_REDIS_REST_URL / _TOKEN (ou KV_REST_API_URL / _TOKEN) sont définies. Sinon, fichiers locaux (dev/test).
+// Par défaut : fichiers JSON dans DATA_DIR (hébergement avec disque persistant, ex. Hostinger Node.js).
+// Option : base Redis (Upstash) si UPSTASH_REDIS_REST_URL / _TOKEN (ou KV_REST_API_URL / _TOKEN) sont définies,
+// utile sur un hébergement à disque éphémère (serverless).
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '';
 const USE_REDIS = !!(REDIS_URL && REDIS_TOKEN);
@@ -57,11 +58,13 @@ const redis = async (...cmd) => {
   return j.result;
 };
 
-const DATA_DIR = process.env.VERCEL ? path.join(os.tmpdir(), 'wanwanplay-data') : path.join(__dirname, 'data');
+// DATA_DIR : dossier de stockage des commandes et codes promo. Sur Hostinger, le choisir HORS du dossier du site
+// (ex. /home/<utilisateur>/wanwanplay-data) pour qu'un redéploiement ne l'efface pas.
+const DATA_DIR = process.env.DATA_DIR || (process.env.VERCEL ? path.join(os.tmpdir(), 'wanwanplay-data') : path.join(__dirname, 'data'));
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const USES_FILE = path.join(DATA_DIR, 'promo-uses.json');
 if (!USE_REDIS) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) { console.warn('[stockage]', e.message); } }
-if (process.env.VERCEL && !USE_REDIS) console.warn('[stockage] ATTENTION : pas de base Redis configurée, les commandes seront perdues.');
+if (process.env.VERCEL && !USE_REDIS) console.warn('[stockage] ATTENTION : disque éphémère et pas de base Redis, les commandes seront perdues.');
 
 const readJson = (f, fallback) => {
   try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return fallback; }
@@ -427,10 +430,10 @@ app.post('/pay/mock/:id/ok', async (req, res) => {
   res.redirect(r.ok ? `/success.html?lang=${lang}&order=${req.params.id}` : `/cancel.html?lang=${lang}`);
 });
 
-// Sur Vercel l'application est exportée (pas de listen) ; en local on démarre le serveur.
+// Hébergement serverless : l'application est exportée (pas de listen). Sinon (Hostinger, local) on démarre le serveur.
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Site sur ${BASE_URL} — paiement : ${PROVIDER.toUpperCase()}${PROVIDER === 'airwallex' ? ' (' + AW_ENV + ')' : ''} — stockage : ${USE_REDIS ? 'Redis' : 'fichiers'}`);
+    console.log(`Site sur ${BASE_URL} — paiement : ${PROVIDER.toUpperCase()}${PROVIDER === 'airwallex' ? ' (' + AW_ENV + ')' : ''} — stockage : ${USE_REDIS ? 'Redis' : 'fichiers ' + DATA_DIR}`);
   });
 }
 
