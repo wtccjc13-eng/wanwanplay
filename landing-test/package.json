@@ -5,7 +5,8 @@
   "description": "Landing page de test + paiement NewebPay (MPG) pour un jeu de cartes enfants",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/*.test.cjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

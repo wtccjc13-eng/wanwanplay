@@ -504,6 +504,7 @@ $('form').addEventListener('submit', async (e) => {
       payments.redirectToCheckout({
         intent_id: a.intentId, client_secret: a.clientSecret, currency: a.currency, mode: 'payment',
         locale: a.locale, successUrl: a.successUrl, failUrl: a.failUrl,
+        country_code: a.shopperCountryCode,
         applePayRequestOptions: { countryCode: a.countryCode },
         googlePayRequestOptions: { countryCode: a.countryCode },
       });

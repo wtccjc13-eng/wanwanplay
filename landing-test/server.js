@@ -16,7 +16,7 @@ const {
   PRICE_EUR = '19.90',
   SHIPPING_EUR = '0',
   EUR_TWD_RATE = '35',
-  // Airwallex (Hosted Payment Page) : démo = https://api-demo.airwallex.com, production = https://api.airwallex.com
+  // Airwallex : le réglage applicatif « demo » utilise l'API sandbox actuelle.
   AIRWALLEX_CLIENT_ID = '',
   AIRWALLEX_API_KEY = '',
   AIRWALLEX_ENV = 'demo',
@@ -27,7 +27,7 @@ const {
 
 const AIRWALLEX_ON = !!(AIRWALLEX_CLIENT_ID && AIRWALLEX_API_KEY);
 const AW_ENV = AIRWALLEX_ENV === 'prod' ? 'prod' : 'demo';
-const AW_BASE = AIRWALLEX_API_BASE || (AW_ENV === 'prod' ? 'https://api.airwallex.com' : 'https://api-demo.airwallex.com');
+const AW_BASE = AIRWALLEX_API_BASE || (AW_ENV === 'prod' ? 'https://api.airwallex.com' : 'https://api.sandbox.airwallex.com');
 const NEWEBPAY_ON = !!(NEWEBPAY_MERCHANT_ID && NEWEBPAY_HASH_KEY && NEWEBPAY_HASH_IV);
 // Un seul moyen de paiement actif : Airwallex en priorité, puis NewebPay, sinon simulation
 const PROVIDER = AIRWALLEX_ON ? 'airwallex' : NEWEBPAY_ON ? 'newebpay' : 'simulation';
@@ -82,14 +82,42 @@ const db = {
     if (USE_REDIS) return parseInt(await redis('GET', `promo:${code}`), 10) || 0;
     return readJson(USES_FILE, {})[code] || 0;
   },
-  async addPromoUse(code) {
-    if (USE_REDIS) { await redis('INCR', `promo:${code}`); return; }
-    const uses = readJson(USES_FILE, {}); uses[code] = (uses[code] || 0) + 1; writeJson(USES_FILE, uses);
-  },
-  // Verrou d'idempotence : true une seule fois par commande (webhooks reçus en double)
-  async claimPaid(id) {
-    if (USE_REDIS) return (await redis('SET', `paidlock:${id}`, '1', 'NX')) === 'OK';
-    return true;
+  // Le paiement et le compteur promo sont enregistrés ensemble, sans verrou
+  // permanent qui empêcherait une relivraison du webhook après une panne.
+  async commitPaid(order) {
+    if (USE_REDIS) {
+      const script = `
+        local raw = redis.call('GET', KEYS[1])
+        if not raw then return -1 end
+        local current = cjson.decode(raw)
+        if current.status == 'paid' then return 0 end
+        local uses = nil
+        if current.promoCode and current.promoCode ~= cjson.null and current.promoCode ~= '' then
+          uses = tonumber(redis.call('GET', KEYS[2]) or '0')
+          if not uses then return redis.error_reply('Invalid promo counter') end
+        end
+        current.status = 'paid'
+        current.paidAt = ARGV[1]
+        local encoded = cjson.encode(current)
+        if uses then redis.call('SET', KEYS[2], tostring(uses + 1)) end
+        redis.call('SET', KEYS[1], encoded)
+        return 1
+      `;
+      return redis('EVAL', script, 2, `order:${order.id}`,
+        order.promoCode ? `promo:${order.promoCode}` : `order:${order.id}`, order.paidAt);
+    }
+    // Pas d'attente entre lecture et écriture pour la simulation locale.
+    const orders = readJson(ORDERS_FILE, {}), current = orders[order.id];
+    if (!current) return -1;
+    if (current.status === 'paid') return 0;
+    current.status = 'paid'; current.paidAt = order.paidAt;
+    if (current.promoCode) {
+      const uses = readJson(USES_FILE, {});
+      uses[current.promoCode] = (uses[current.promoCode] || 0) + 1;
+      writeJson(USES_FILE, uses);
+    }
+    writeJson(ORDERS_FILE, orders);
+    return 1;
   },
 };
 
@@ -165,7 +193,7 @@ function buildTradeInfo(order) {
 }
 
 // ---------- Validation d'une commande payée ----------
-// paid = { twd } pour NewebPay, { eurMajor, currency } pour Airwallex ; rien = simulation
+// paid = { twd } pour NewebPay, { eurMajor, currency, intentId } pour Airwallex ; rien = simulation
 async function markPaid(orderId, paid = {}) {
   const order = await db.getOrder(orderId);
   if (!order) return { ok: false, reason: 'commande inconnue' };
@@ -173,12 +201,13 @@ async function markPaid(orderId, paid = {}) {
   if (paid.twd !== undefined && Number(paid.twd) !== order.totalTwd) return { ok: false, reason: 'montant différent' };
   if (paid.eurMajor !== undefined && (Math.round(Number(paid.eurMajor) * 100) !== order.totalCents || paid.currency !== 'EUR'))
     return { ok: false, reason: 'montant différent' };
-  if (!(await db.claimPaid(orderId))) return { ok: true, already: true };
-  order.status = 'paid';
+  if (paid.intentId !== undefined && (order.provider !== 'airwallex' || order.airwallexIntentId !== paid.intentId))
+    return { ok: false, reason: 'PaymentIntent différent' };
   order.paidAt = new Date().toISOString();
-  if (order.promoCode) await db.addPromoUse(order.promoCode);
-  await db.saveOrder(order);
-  console.log(`[commande payée] ${orderId} — ${order.customer.email} — ${(order.totalCents / 100).toFixed(2)} € (${order.provider || PROVIDER})`);
+  const committed = await db.commitPaid(order);
+  if (committed === -1) return { ok: false, reason: 'commande inconnue' };
+  if (committed === 0) return { ok: true, already: true };
+  console.log(`[commande payée] ${orderId} — ${(order.totalCents / 100).toFixed(2)} € (${order.provider || PROVIDER})`);
   return { ok: true };
 }
 const orderLang = async (id) => ((await db.getOrder(id)) || {}).lang || 'zh';
@@ -254,6 +283,8 @@ app.post('/api/quote', async (req, res) => {
 // Crée la commande puis renvoie le formulaire auto-soumis vers NewebPay (ou la page de simulation)
 app.post('/api/checkout', async (req, res) => {
   try {
+    // Une instance Vercel ne doit jamais encaisser avec un stockage éphémère.
+    if (process.env.VERCEL && !USE_REDIS) return res.status(503).json({ code: 'GENERIC' });
     const { name, phone, email, address, zip, city, country, quantity, promoCode } = req.body;
     const lang = normLang(req.body.lang);
     if (![name, phone, email, address, zip, city].every((v) => v && String(v).trim()))
@@ -294,11 +325,12 @@ app.post('/api/checkout', async (req, res) => {
       await db.saveOrder(order);
       return res.json({
         airwallex: {
-          env: AW_ENV,
+          env: AW_ENV === 'prod' ? 'prod' : 'sandbox',
           intentId: intent.id,
           clientSecret: intent.clientSecret,
           currency: 'EUR',
           countryCode: AIRWALLEX_COUNTRY_CODE,
+          shopperCountryCode: order.customer.country,
           locale: lang === 'en' ? 'en' : 'zh',
           successUrl: `${BASE_URL}/success.html?lang=${lang}&order=${id}`,
           failUrl: `${BASE_URL}/cancel.html?lang=${lang}`,
@@ -359,7 +391,7 @@ app.post('/airwallex/webhook', async (req, res) => {
       const intentId = ev.data?.object?.id;
       const pi = await awFetch('GET', `/api/v1/pa/payment_intents/${encodeURIComponent(intentId)}`);
       if (pi.status === 'SUCCEEDED') {
-        const r = await markPaid(pi.merchant_order_id, { eurMajor: pi.amount, currency: pi.currency });
+        const r = await markPaid(pi.merchant_order_id, { eurMajor: pi.amount, currency: pi.currency, intentId: pi.id });
         if (!r.ok) console.warn('[webhook refusé]', pi.merchant_order_id, r.reason);
       }
     }
