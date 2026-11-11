@@ -6,6 +6,7 @@
       'meta.title': '灣灣好日子 野生動物版｜認識台灣動物的親子桌遊',
       'meta.desc': '《灣灣好日子》野生動物版：2 至 6 人的動物卡牌桌遊，5 歲以上都能玩。認識台灣的動物與棲地、練習繁體中文閱讀，一起學著守護牠們。',
       'banner.sim': '測試模式｜模擬付款，不會扣款',
+      'banner.unavailable': '付款功能準備中，暫時無法下單。',
       'banner.np': '測試模式｜藍新金流（NewebPay）測試環境',
       'banner.aw': '測試模式｜Airwallex 測試環境，不會扣款',
       'nav.order': '立即訂購',
@@ -89,6 +90,7 @@
       'err.ZIP_INVALID': '郵遞區號格式不正確。',
       'err.COUNTRY_INVALID': '請選擇配送國家。',
       'err.GENERIC': '發生錯誤，請稍後再試。',
+      'err.PAYMENT_UNAVAILABLE': '付款功能尚未開放，請稍後再試。',
 
       'faq.h': '常見問題',
       'faq.1.q': '適合幾歲的孩子？', 'faq.1.a': '5 歲以上都能玩，最適合 5 至 14 歲的孩子，大人一起玩也很有趣。內含小卡片，不適合 3 歲以下幼兒。',
@@ -109,6 +111,7 @@
       'meta.title': '灣灣好日子 Wildlife Edition | Taiwan animal card game for kids — WanWan Play',
       'meta.desc': 'WanWan Play\'s 灣灣好日子 Wildlife Edition: a card game for 2–6 players, ages 5+. Discover Taiwan\'s animals and habitats, practise reading Traditional Chinese, and learn how to protect them.',
       'banner.sim': 'TEST MODE | simulated payment, no charge',
+      'banner.unavailable': 'Checkout is being prepared. Orders are temporarily unavailable.',
       'banner.np': 'TEST MODE | NewebPay test environment',
       'banner.aw': 'TEST MODE | Airwallex demo environment, no charge',
       'nav.order': 'Order now',
@@ -192,6 +195,7 @@
       'err.ZIP_INVALID': 'Please enter a valid postal code.',
       'err.COUNTRY_INVALID': 'Please select a delivery country.',
       'err.GENERIC': 'Something went wrong. Please try again.',
+      'err.PAYMENT_UNAVAILABLE': 'Checkout is not available yet. Please try again later.',
 
       'faq.h': 'FAQ',
       'faq.1.q': 'What age is it for?', 'faq.1.a': 'Anyone aged 5 and up can play; it works best for kids aged 5 to 14, and adults enjoy it too. It contains small cards and is not suitable for children under 3.',

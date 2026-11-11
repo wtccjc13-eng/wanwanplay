@@ -422,7 +422,7 @@ const $ = (id) => document.getElementById(id);
 const t = (k) => I18N.t(k);
 let appliedPromo = '';
 let lastQuote = null;
-let cfg = { simulation: true, provider: 'simulation' };
+let cfg = { simulation: true, provider: 'simulation', checkoutReady: false };
 let errCode = '', promoState = null;   // {kind:'ok'|'err', code?}
 
 function renderCountries() {
@@ -451,6 +451,9 @@ function renderMsgs() {
 }
 function renderBanner() {
   const b = $('banner');
+  if (cfg.checkoutReady === false) {
+    b.hidden = false; b.textContent = t('banner.unavailable'); return;
+  }
   if (cfg.provider === 'airwallex' && cfg.airwallexEnv === 'prod') { b.hidden = true; return; }   // production : pas de bandeau test
   b.hidden = false;
   b.textContent = t(cfg.simulation ? 'banner.sim' : cfg.provider === 'airwallex' ? 'banner.aw' : 'banner.np');
@@ -487,6 +490,7 @@ $('applyPromo').addEventListener('click', async () => {
 
 $('form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (cfg.checkoutReady === false) { errCode = 'PAYMENT_UNAVAILABLE'; renderMsgs(); return; }
   errCode = ''; renderMsgs();
   $('pay').disabled = true;
   const body = Object.fromEntries(new FormData($('form')).entries());
@@ -534,6 +538,7 @@ document.addEventListener('langchange', () => {
 
 fetch('/api/config').then(r => r.json()).then(c => {
   cfg = c;
+  $('pay').disabled = c.checkoutReady === false;
   document.querySelectorAll('.price-label').forEach(el => el.textContent = I18N.money(c.priceCents));
   renderBanner();
 });

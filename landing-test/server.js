@@ -32,6 +32,8 @@ const NEWEBPAY_ON = !!(NEWEBPAY_MERCHANT_ID && NEWEBPAY_HASH_KEY && NEWEBPAY_HAS
 // Un seul moyen de paiement actif : Airwallex en priorité, puis NewebPay, sinon simulation
 const PROVIDER = AIRWALLEX_ON ? 'airwallex' : NEWEBPAY_ON ? 'newebpay' : 'simulation';
 const SIMULATION = PROVIDER === 'simulation';
+// En production Airwallex, ne jamais basculer vers de faux paiements si une clé manque.
+const CHECKOUT_READY = AW_ENV !== 'prod' || (AIRWALLEX_ON && !!AIRWALLEX_WEBHOOK_SECRET);
 const PRICE_CENTS = Math.round(parseFloat(PRICE_EUR) * 100);       // prix unitaire affiché, en centimes d'euro
 const SHIPPING_CENTS = Math.round(parseFloat(SHIPPING_EUR) * 100);  // frais de port par commande, en centimes
 const RATE = parseFloat(EUR_TWD_RATE);                              // 1 EUR = RATE TWD (taux fixe, à mettre à jour)
@@ -273,10 +275,13 @@ function awSignatureOk(req) {
 const app = express();
 app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); } }));
 app.use(express.urlencoded({ extended: false }));
+app.get('/.well-known/apple-developer-merchantid-domain-association', (_req, res) => {
+  res.type('application/octet-stream').sendFile(path.join(__dirname, 'public', '.well-known', 'apple-developer-merchantid-domain-association'));
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/config', (_req, res) => {
-  res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, simulation: SIMULATION, provider: PROVIDER, airwallexEnv: AW_ENV });
+  res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, simulation: SIMULATION, provider: PROVIDER, airwallexEnv: AW_ENV, checkoutReady: CHECKOUT_READY });
 });
 
 app.post('/api/quote', async (req, res) => {
@@ -292,6 +297,7 @@ app.post('/api/quote', async (req, res) => {
 // Crée la commande puis renvoie le formulaire auto-soumis vers NewebPay (ou la page de simulation)
 app.post('/api/checkout', async (req, res) => {
   try {
+    if (!CHECKOUT_READY) return res.status(503).json({ code: 'PAYMENT_UNAVAILABLE' });
     // Une instance Vercel ne doit jamais encaisser avec un stockage éphémère.
     if (process.env.VERCEL && !USE_REDIS) return res.status(503).json({ code: 'GENERIC' });
     const { name, phone, email, address, zip, city, country, quantity, promoCode } = req.body;
@@ -418,7 +424,7 @@ const MOCK = {
 };
 app.get('/pay/mock/:id', async (req, res) => {
   const order = await db.getOrder(req.params.id);
-  if (!SIMULATION || !order) return res.status(404).send('Not found');
+  if (!SIMULATION || AW_ENV === 'prod' || !order) return res.status(404).send('Not found');
   const m = MOCK[order.lang] || MOCK.zh;
   res.send(`<!doctype html><html lang="${order.lang === 'en' ? 'en' : 'zh-TW'}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${m.title}</title>
@@ -430,7 +436,7 @@ app.get('/pay/mock/:id', async (req, res) => {
 <form method="get" action="/cancel.html" style="margin-top:12px"><input type="hidden" name="lang" value="${order.lang}"><button style="padding:12px 20px">${m.cancel}</button></form>`);
 });
 app.post('/pay/mock/:id/ok', async (req, res) => {
-  if (!SIMULATION) return res.status(404).end();
+  if (!SIMULATION || AW_ENV === 'prod') return res.status(404).end();
   const r = await markPaid(req.params.id);
   const lang = await orderLang(req.params.id);
   res.redirect(r.ok ? `/success.html?lang=${lang}&order=${req.params.id}` : `/cancel.html?lang=${lang}`);

@@ -25,6 +25,7 @@ Voir aussi `README.md` (section « Paiement Airwallex ») et `.env.example`.
 5. **Webhook Airwallex** (créé par Charly dans l'application Airwallex, Developer > Webhooks) : URL `<BASE_URL>/airwallex/webhook`, événement `payment_intent.succeeded`. `BASE_URL` contient déjà `https://`. Copier la clé secrète dans `AIRWALLEX_WEBHOOK_SECRET`.
 6. **Tests en démo** : achat avec une carte de test Airwallex ; code promo (`TEST10`) ; paiement refusé ; Apple Pay et Google Pay sur téléphone. Vérifier dans les logs hPanel `[commande payée] ...` : la commande passe à « payée » une seule fois et le code promo n'est compté qu'une fois. Vérifier que les fichiers de `DATA_DIR` survivent à un redéploiement.
 7. **Production** : clés `prod` et `AIRWALLEX_ENV=prod`, nouveau webhook en production, un vrai achat de quelques euros puis remboursement.
+   En mode `prod`, le checkout reste fermé (503) tant que Client ID, API key et secret du webhook ne sont pas tous renseignés. Les routes de paiement simulé sont désactivées. Le fichier Apple déjà fourni est servi à son URL `.well-known` par une route explicite, avec le type `application/octet-stream`.
 8. **Domaine** : une fois tout validé, rattacher `wanwanplay.com` à l'application Node.js (Hostinger demande de retirer l'ancien site du domaine avant de créer l'application). Sauvegarder les fichiers du site actuel avant (`dist/`, `landing-test/public/`) pour pouvoir revenir en arrière.
 
 ## Stockage fichiers et option Redis

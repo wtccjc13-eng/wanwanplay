@@ -47,6 +47,21 @@ test('Vercel refuses checkout without durable storage', async t => {
   assert.equal(response.status, 503);
 });
 
+test('Production requires Airwallex credentials and webhook secret; Apple verification remains exact', async t => {
+  const app = await startApp({ AIRWALLEX_ENV: 'prod' }); t.after(app.stop);
+  const config = await (await fetch(app.base + '/api/config')).json();
+  assert.equal(config.checkoutReady, false);
+  const checkout = await post(app.base, '/api/checkout', sampleOrder);
+  assert.equal(checkout.status, 503);
+  assert.equal((await checkout.json()).code, 'PAYMENT_UNAVAILABLE');
+  assert.equal((await post(app.base, '/pay/mock/WWFAKE/ok', {})).status, 404);
+  const verification = await fetch(app.base + '/.well-known/apple-developer-merchantid-domain-association');
+  assert.equal(verification.status, 200);
+  assert.match(verification.headers.get('content-type'), /^application\/octet-stream/);
+  const expected = await fs.readFile(path.join(__dirname, '..', 'public', '.well-known', 'apple-developer-merchantid-domain-association'));
+  assert.deepEqual(Buffer.from(await verification.arrayBuffer()), expected);
+});
+
 test('Hostinger refuses startup when DATA_DIR is not a writable directory', async () => {
   // Le fichier de test lui-même ne peut pas être utilisé comme dossier de données.
   await assert.rejects(startApp({ VERCEL: '', DATA_DIR: __filename }), /exited before readiness/);
