@@ -12,6 +12,8 @@ After redeploying, check the new homepage, product images, and language selector
 
 This Git deployment serves the landing page as static files. Its pricing, promo, and checkout APIs require the Node.js app in `landing-test/server.js`; Apache rewrite rules do not run that server. Configure Node.js hosting before using the order flow. See `landing-test/README.md` for backend setup.
 
+For the Airwallex Node.js application on `feature/airwallex-checkout`, follow `landing-test/DEPLOIEMENT-HOSTINGER.md`. Set `DATA_DIR` to a persistent writable directory outside the deployed site, or configure the optional Redis backend. Keep the payment branch separate from `main` until the application is validated.
+
 ## Other static hosts
 
 Set the publish directory to `landing-test/public`. No build command or package installation is required to display the page. `.openai/hosting.json` uses this directory as well. Checkout requires the backend described above.

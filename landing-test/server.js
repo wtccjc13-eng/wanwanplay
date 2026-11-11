@@ -60,10 +60,16 @@ const redis = async (...cmd) => {
 
 // DATA_DIR : dossier de stockage des commandes et codes promo. Sur Hostinger, le choisir HORS du dossier du site
 // (ex. /home/<utilisateur>/wanwanplay-data) pour qu'un redéploiement ne l'efface pas.
-const DATA_DIR = process.env.DATA_DIR || (process.env.VERCEL ? path.join(os.tmpdir(), 'wanwanplay-data') : path.join(__dirname, 'data'));
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(__dirname, process.env.DATA_DIR)
+  : (process.env.VERCEL ? path.join(os.tmpdir(), 'wanwanplay-data') : path.join(__dirname, 'data'));
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const USES_FILE = path.join(DATA_DIR, 'promo-uses.json');
-if (!USE_REDIS) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) { console.warn('[stockage]', e.message); } }
+if (!USE_REDIS) {
+  // Échouer au démarrage plutôt qu'accepter des commandes sans stockage utilisable.
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.accessSync(DATA_DIR, fs.constants.W_OK);
+}
 if (process.env.VERCEL && !USE_REDIS) console.warn('[stockage] ATTENTION : disque éphémère et pas de base Redis, les commandes seront perdues.');
 
 const readJson = (f, fallback) => {

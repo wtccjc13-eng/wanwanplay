@@ -21,7 +21,7 @@ Le serveur choisit le moyen de paiement : **Airwallex** si `AIRWALLEX_CLIENT_ID`
 1. `POST /api/checkout` crée la commande, recalcule le prix et le code promo côté serveur, puis crée un PaymentIntent Airwallex (montant en **euros**, unités principales).
 2. Le navigateur est redirigé vers la page de paiement hébergée par Airwallex (Visa, Mastercard, Apple Pay, Google Pay).
 3. `POST /airwallex/webhook` (événement `payment_intent.succeeded`) est la **seule** validation du paiement : signature vérifiée, PaymentIntent relu via l'API, montant et devise comparés, puis commande marquée payée et code promo consommé (une seule fois).
-4. Stockage : fichiers JSON dans `DATA_DIR` (à placer hors du dossier du site). Déploiement : voir `DEPLOIEMENT-HOSTINGER.md`.
+4. Stockage : fichiers JSON dans `DATA_DIR` (chemin absolu persistant hors du site sur Hostinger). Redis reste une option prioritaire si ses variables sont renseignées. Déploiement : voir `DEPLOIEMENT-HOSTINGER.md`.
 
 Variables : voir `.env.example`. Test local sans compte : laisser les clés vides (mode simulation).
 
@@ -56,7 +56,17 @@ CSS écrit pour le téléphone d'abord (`@media (min-width)` pour enrichir) : ch
 | `POST /payment/notify` | confirmation serveur à serveur (seule source de vérité ; le montant payé doit correspondre) |
 | `POST /payment/return` | retour du client, affichage uniquement |
 
-Les commandes sont stockées dans `data/orders.json` (suffisant pour un test).
+Sans Redis, les commandes sont stockées dans `<DATA_DIR>/orders.json` et les utilisations des promotions dans `<DATA_DIR>/promo-uses.json`. `DATA_DIR` vide conserve le dossier local `data/` ; un chemin relatif part du dossier de `server.js`. Le processus Node.js doit pouvoir créer et écrire ce dossier. Sur Hostinger, le choisir hors du site et vérifier sa conservation après redéploiement. Pour migrer les données, suivre le guide avant de changer le chemin.
+
+`UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN` (ou `KV_REST_API_URL` / `KV_REST_API_TOKEN`) activent Redis à la place des fichiers. Le stockage JSON est prévu pour une seule instance ; Redis est nécessaire pour partager les données entre plusieurs instances.
+
+## Tests du paiement sans compte réel
+
+```bash
+npm test
+```
+
+Les tests démarrent de faux services Airwallex/Redis avec des identifiants factices. Ils vérifient aussi un paiement stocké dans un `DATA_DIR` externe, son maintien après redémarrage et l'absence de double comptage promotionnel lors de nouvelles notifications. Les clés réelles ne sont pas nécessaires.
 
 ## Visuels
 
