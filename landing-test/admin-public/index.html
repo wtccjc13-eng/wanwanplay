@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><title>Orders · WanWan Play</title>
+  <link rel="stylesheet" href="/backoffice/admin.css"><script src="/backoffice/admin.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/backoffice/"><span class="brand-icon">灣</span><span>WanWan Play<small>ORDER STUDIO</small></span></a><div class="header-actions"><a href="/" target="_blank" rel="noopener">View store ↗</a><button id="logout" class="quiet" hidden>Sign out</button></div></header>
+  <main>
+    <section id="login-panel" class="login-card">
+      <span class="eyebrow">A LITTLE ORDER, BEHIND THE SCENES</span><h1>Welcome back.</h1><p>Sign in to prepare your next little adventure.</p>
+      <form id="login-form"><label for="password">Backoffice password</label><input id="password" type="password" autocomplete="current-password" required maxlength="1024"><button class="primary" id="login-button">Sign in →</button></form>
+      <p id="login-error" role="alert" class="error"></p><small>Your customer and payment information stays private.</small>
+    </section>
+    <section id="workspace" hidden>
+      <div class="page-heading"><div><span class="eyebrow">THE WANWAN WORKROOM</span><h1>Orders<span class="dot">.</span></h1><p>From a new adventure to a parcel on its way.</p></div><div class="actions"><button id="refresh">↻ Refresh</button><button id="export">Export CSV ↗</button></div></div>
+      <div id="environment" class="notice"></div>
+      <section class="stats" aria-label="Order summary"><article><span>Paid orders</span><strong id="stat-paid">—</strong><small>Payment confirmed</small></article><article><span>To prepare</span><strong id="stat-prepare">—</strong><small>Paid &amp; unfulfilled</small></article><article><span>Pending attempts</span><strong id="stat-pending">—</strong><small>Payment not confirmed</small></article><article><span>Paid total</span><strong id="stat-total">—</strong><small>Includes test / unclassified orders</small></article></section>
+      <div class="list-heading"><h2>Your order book</h2><span>Summary and export follow the filters below.</span></div>
+      <form id="filters" class="filters">
+        <label class="search">Search<input id="search" type="search" placeholder="Name, email, reference, tracking…" maxlength="200"></label>
+        <label>Payment<select id="payment"><option value="paid">Paid</option><option value="all">All payments</option><option value="pending">Pending</option><option value="failed">Failed</option></select></label>
+        <label>Fulfillment<select id="fulfillment"><option value="all">All stages</option><option value="unfulfilled">Unfulfilled</option><option value="packing">Packing</option><option value="shipped">Shipped</option><option value="on_hold">On hold</option></select></label>
+        <label>Order type<select id="type"><option value="all">All types</option><option value="real">Real</option><option value="test">Test</option><option value="unknown">Unclassified</option></select></label>
+        <label>Archive<select id="archived"><option value="no">Active orders</option><option value="yes">Archived</option><option value="all">Everything</option></select></label>
+      </form>
+      <p id="message" role="status" class="message"></p>
+      <div class="table-wrap"><table><thead><tr><th>Order / date</th><th>Recipient</th><th>Payment</th><th>Total</th><th>Fulfillment</th><th></th></tr></thead><tbody id="orders"></tbody></table><div id="empty" class="empty" hidden><span>↗</span><h3>A clear desk.</h3><p>No orders match these filters. Try “All payments” to see pending attempts.</p></div></div>
+      <div class="pagination"><span id="result-count"></span><div><button id="previous">← Previous</button><span id="page-number"></span><button id="next">Next →</button></div></div>
+      <p class="footnote">Payment status comes from the checkout. Packing, notes and tracking are managed separately. Archiving never deletes an order or refunds a payment.</p>
+    </section>
+  </main>
+  <dialog id="detail" aria-labelledby="detail-title">
+    <div class="detail-header"><div><span class="eyebrow">ORDER DETAILS</span><h2 id="detail-title">Order</h2></div><button id="close-detail" aria-label="Close order details">✕</button></div>
+    <p id="detail-reference" class="reference"></p><div id="detail-badges" class="badges"></div>
+    <section class="recipient"><h3>Deliver to</h3><strong id="recipient-name"></strong><p id="recipient-address"></p><div id="recipient-contact"></div></section>
+    <dl id="order-facts" class="facts"></dl>
+    <form id="management-form">
+      <h3>Prepare this order</h3><div class="two-columns"><label>Fulfillment<select id="edit-fulfillment"><option value="unfulfilled">Unfulfilled</option><option value="packing">Packing</option><option value="shipped">Shipped</option><option value="on_hold">On hold</option></select></label><label>Order type<select id="edit-type"><option value="unknown">Unclassified</option><option value="test">Test order</option><option value="real">Real order</option></select></label></div>
+      <div class="two-columns"><label>Carrier<input id="edit-carrier" maxlength="80" placeholder="e.g. La Poste"></label><label>Tracking number<input id="edit-tracking" maxlength="150"></label></div>
+      <label>Internal notes<textarea id="edit-notes" maxlength="4000" rows="4" placeholder="Packing instructions, follow-up, anything to remember…"></textarea></label>
+      <label class="checkbox"><input id="edit-archived" type="checkbox">Archive this order</label>
+      <p class="footnote">These changes do not charge, cancel or refund a payment, and do not notify the customer.</p>
+      <p id="save-message" role="status" class="message"></p><button id="save-order" class="primary">Save changes</button>
+    </form>
+  </dialog>
+</body></html>

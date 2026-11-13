@@ -8,4 +8,6 @@ Keep the existing persistent DATA_DIR or optional Redis configuration. Preserve 
 
 For local preview run npm ci, npm start and npm test inside landing-test/.
 
+An order backoffice is available at `/backoffice/` after configuring `ADMIN_PASSWORD` (a unique random password of at least 16 characters) in Hostinger. It provides protected recipient details, filters, fulfillment notes/tracking, archiving and CSV export. Existing orders are read automatically; payment records remain separate from management edits. See the deployment guide before enabling it.
+
 The previous static website remains in dist/. Do not merge this deployment branch into main as part of the removal. Static-only hosting does not provide the pricing and promo APIs.

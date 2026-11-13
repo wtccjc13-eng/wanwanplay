@@ -32,6 +32,59 @@ module.exports = function storage(dataDir, redis) {
     recover();
   }
   return {
+    async listOrders() {
+      if (!redis) { recover(); return Object.values(read('orders.json')); }
+      const keys = new Set();
+      let cursor = '0';
+      do {
+        const page = await redis('SCAN', cursor, 'MATCH', 'order:*', 'COUNT', 100);
+        cursor = String(page[0]);
+        for (const key of page[1]) keys.add(key);
+        if (keys.size > 10000) throw new Error('ORDER_LIST_LIMIT');
+      } while (cursor !== '0');
+      const orders = [], all = [...keys];
+      for (let i = 0; i < all.length; i += 100) {
+        const values = await redis('MGET', ...all.slice(i, i + 100));
+        for (const value of values) if (value) orders.push(JSON.parse(value));
+      }
+      return orders;
+    },
+    async getManagement(ids) {
+      if (!redis) return read('order-management.json');
+      const result = {};
+      for (let i = 0; i < ids.length; i += 100) {
+        const batch = ids.slice(i, i + 100);
+        const values = await redis('MGET', ...batch.map(id => 'order-admin:' + id));
+        values.forEach((value, index) => { if (value) result[batch[index]] = JSON.parse(value); });
+      }
+      return result;
+    },
+    async updateManagement(id, value, expectedVersion) {
+      if (redis) return redis('EVAL', `
+        local raw = redis.call('GET', KEYS[1])
+        local current = raw and cjson.decode(raw) or {version=0}
+        if tonumber(current.version) ~= tonumber(ARGV[1]) then return 0 end
+        redis.call('SET', KEYS[1], ARGV[2])
+        return 1
+      `, 1, 'order-admin:' + id, String(expectedVersion), JSON.stringify(value));
+      const records = read('order-management.json');
+      if ((records[id]?.version || 0) !== expectedVersion) return 0;
+      records[id] = value; write('order-management.json', records); return 1;
+    },
+    async getAdminSession(hash) {
+      if (redis) { const value = await redis('GET', 'admin-session:' + hash); return value ? JSON.parse(value) : null; }
+      return read('admin-sessions.json')[hash] || null;
+    },
+    async saveAdminSession(hash, session) {
+      if (redis) return redis('SET', 'admin-session:' + hash, JSON.stringify(session), 'EX', 28800);
+      const sessions = read('admin-sessions.json');
+      for (const [key, value] of Object.entries(sessions)) if (value.expires <= Date.now()) delete sessions[key];
+      sessions[hash] = session; write('admin-sessions.json', sessions);
+    },
+    async deleteAdminSession(hash) {
+      if (redis) return redis('DEL', 'admin-session:' + hash);
+      const sessions = read('admin-sessions.json'); delete sessions[hash]; write('admin-sessions.json', sessions);
+    },
     async getOrder(id) {
       if (redis) { const raw = await redis('GET', 'order:' + id); return raw ? JSON.parse(raw) : null; }
       recover(); return read('orders.json')[id] || null;

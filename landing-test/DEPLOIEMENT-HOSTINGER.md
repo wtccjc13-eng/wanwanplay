@@ -59,3 +59,14 @@ After sandbox validation, create/select the company's Live app, register the sam
 ## Retired provider
 
 AIRWALLEX_* settings are unused and may be removed individually. The old webhook and simulated payments remain 404. Reconcile any old outstanding transactions before disabling the former webhook and revoking credentials. Preserve historical payment references for refunds/disputes. The old Apple merchant association file remains removed; any future wallet integration may require its own verification.
+
+## Enable the order backoffice
+
+1. In the existing application's Environment Variables, add `ADMIN_PASSWORD`. Generate a unique random password using a password manager, with at least 16 characters (24 or more recommended). Do not paste it into chat or GitHub. Keep all PayPal/storage variables unchanged.
+2. Redeploy the latest feature branch or restart after changing variables. Production must use HTTPS; the cookie is intentionally not sent over plain HTTP.
+3. Open https://wanwanplay.com/backoffice/ and sign in with that password. You should see paid active orders first. Select All payments or Pending to inspect incomplete attempts.
+4. Open an order to see the recipient, address, contact information, amount and payment references. Set fulfillment, carrier, tracking, internal notes or archive state and save. These actions do not change payment status or send customer emails.
+5. Mark sandbox attempts as Test orders after checking them. Existing records may show Environment unknown; the integration did not store the environment on older orders. New orders record it automatically. A sandbox paid order is not a real sale.
+6. Refresh the page to confirm the saved changes remain. Use Export CSV to download all matching orders, including customer shipping details. Keep downloads private.
+
+The backoffice reads existing orders automatically; there is no JSON upload/import or manual file editing. Its private fulfillment/notes file is `order-management.json` inside DATA_DIR. For Redis, separate keys store management and shared sessions. Do not copy any of these files into the public website folder. See README.md for session expiry, login limits, backup and concurrency details.

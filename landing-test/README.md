@@ -36,6 +36,22 @@ npm test uses fake PayPal and Redis servers and a simulated SDK/DOM callback flo
 
 See DEPLOIEMENT-HOSTINGER.md for credentials, webhook setup and the real-account test checklist.
 
+## Order backoffice
+
+Open `/backoffice/`. Set `ADMIN_PASSWORD` to a unique random password (minimum 16 characters) in Hostinger environment variables, then restart/redeploy. Do not put the password in this repository or chat. Without this setting the admin API is closed. Production requires HTTPS; the session cookie is Secure, HttpOnly and SameSite=Strict.
+
+The backoffice supports search, payment/fulfillment/type/archive filters, recipient details, tracking, internal notes, archive/unarchive and CSV export of all matching orders. It initially shows paid active orders. Counts and totals follow the filters and include test orders unless filtered out. Pending attempts remain visible under All payments or Pending. Payment status cannot be edited, deleted or refunded from this page, and only paid orders can be packed or shipped.
+
+Existing orders do not identify their sandbox/live environment reliably. New PayPal orders store `paypalEnv`. Use the separate Test / Real / Unclassified order type to organize older records after checking PayPal. This label never changes or confirms payment. No shipment booking or customer notification is performed.
+
+Management data is kept separately in `<DATA_DIR>/order-management.json`, without rewriting original orders. Sessions are stored in `admin-sessions.json` using hashed session identifiers; sessions expire after eight hours. Logout revokes the session, and changing ADMIN_PASSWORD invalidates existing sessions. After 10 failed logins from the same server-observed IP, login is blocked for 15 minutes; counters are local to each Node.js process and reset on restart.
+
+Redis uses `order-admin:<id>` and `admin-session:<hash>` keys; it lists historical `order:*` records via SCAN/MGET. The backoffice currently supports up to 10,000 Redis order records; larger datasets need indexed storage before using this backoffice. File storage still requires exactly one Node.js process. Concurrent metadata edits use a version check: reopen an order after a conflict, rather than overwriting somebody else's work.
+
+Back up management data along with orders, promo counters and any recovery journal while the application is stopped. Sessions need not be preserved when restoring a backup. Keep all these files outside `public/` and `public_html`. There is no public orders JSON download. Only authenticated admins can export customer details as CSV; exports omit checkout token hashes and escape spreadsheet formulas.
+
+Automated tests include admin authentication, CSRF protection, login limits, session expiration/revocation, metadata persistence and edit conflicts, CSV safety, legacy and Redis records, and a simulated browser login/edit flow. The layout and save flow were also checked in a local browser with invented orders.
+
 Official references:
 - https://developer.paypal.com/studio/checkout/standard/integrate
 - https://developer.paypal.com/api/orders/v2

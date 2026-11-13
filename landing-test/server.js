@@ -86,6 +86,7 @@ app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); nex
 app.use(express.json({ limit: '128kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
+require('./admin')(app, db, paypal.env);
 
 app.get('/api/config', (_req, res) => {
   res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, simulation: false, provider: CHECKOUT_READY ? 'paypal' : 'none', checkoutReady: CHECKOUT_READY, paypalEnv: paypal.env, paypalClientId: CHECKOUT_READY ? paypal.clientId : null });
@@ -134,7 +135,7 @@ app.post('/api/checkout', async (req, res) => {
     if (!Number.isSafeInteger(totals.totalCents) || totals.totalCents < 100) throw new Error('PRICE_INVALID');
     const checkoutToken = crypto.randomBytes(32).toString('hex');
     const order = { id: 'WW' + crypto.randomBytes(16).toString('hex').toUpperCase(),
-      status: 'pending', provider: 'paypal', lang: req.body.lang === 'en' ? 'en' : 'zh',
+      status: 'pending', provider: 'paypal', paypalEnv: paypal.env, lang: req.body.lang === 'en' ? 'en' : 'zh',
       createdAt: new Date().toISOString(), ...totals, promoCode: totals.code, customer,
       checkoutTokenHash: paypal.tokenHash(checkoutToken) };
     await db.saveOrder(order);
