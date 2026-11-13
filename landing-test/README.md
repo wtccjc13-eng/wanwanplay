@@ -1,80 +1,28 @@
-# 灣灣好日子 野生動物版 — site de vente (WanWan Play)
+# WanWan Play
 
-Site d'une seule page, en **chinois traditionnel (Taïwan)** par défaut et en **anglais**, avec paiement NewebPay (MPG) et codes promo.
-Autonome : à placer dans un dossier séparé du repo ou sur une branche `feature/landing-test`. Rien n'écrase l'existant.
+Bilingual Traditional Chinese / English product page. **Online checkout is temporarily unavailable**, pending a separate PayPal integration. No orders are created and no simulated payments are available.
 
-## Lancer en local
+## Local development
 
-```bash
-npm install
-cp .env.example .env     # clés NewebPay vides = mode SIMULATION
-npm start                # http://localhost:3000
-```
+Run npm ci, then npm start in this directory (http://localhost:3000). Optionally copy .env.example to .env. Never commit secrets. Run npm test for verification.
 
-- **Mode simulation** (clés vides) : fausse page de paiement pour valider ou annuler. Aucun appel à NewebPay.
-- **Mode NewebPay test** : renseigner `NEWEBPAY_MERCHANT_ID`, `NEWEBPAY_HASH_KEY` (32 car.), `NEWEBPAY_HASH_IV` (16 car.) d'un compte de **test** (https://cwww.newebpay.com). `BASE_URL` doit être une URL publique (ex. tunnel ngrok), sinon NewebPay ne peut pas appeler `/payment/notify`.
+## Retained functionality
 
-## Paiement Airwallex (hébergement Node.js, ex. Hostinger)
+- Product images, language selection (public/i18n.js), mobile layout and navigation.
+- Euro prices: PRODUCT_NAME, PRICE_EUR, SHIPPING_EUR.
+- POST /api/quote calculates prices and promotions without consuming a promo code.
+- promo-codes.json supports percent, amount_eur, maxUses and expires.
+- GET /api/config returns provider: none, checkoutReady: false, simulation: false.
+- POST /api/checkout always returns HTTP 503 PAYMENT_UNAVAILABLE without storing customer details.
 
-Le serveur choisit le moyen de paiement : **Airwallex** si `AIRWALLEX_CLIENT_ID` et `AIRWALLEX_API_KEY` sont définis, sinon NewebPay, sinon simulation.
+The former payment SDK, API calls, callbacks, simulation routes and Apple merchant verification file have been removed. Return pages do not confirm payment. PayPal is not integrated yet.
 
-1. `POST /api/checkout` crée la commande, recalcule le prix et le code promo côté serveur, puis crée un PaymentIntent Airwallex (montant en **euros**, unités principales).
-2. Le navigateur est redirigé vers la page de paiement hébergée par Airwallex (Visa, Mastercard, Apple Pay, Google Pay).
-3. `POST /airwallex/webhook` (événement `payment_intent.succeeded`) est la **seule** validation du paiement : signature vérifiée, PaymentIntent relu via l'API, montant et devise comparés, puis commande marquée payée et code promo consommé (une seule fois).
-4. Stockage : fichiers JSON dans `DATA_DIR` (chemin absolu persistant hors du site sur Hostinger). Redis reste une option prioritaire si ses variables sont renseignées. Déploiement : voir `DEPLOIEMENT-HOSTINGER.md`.
+## Existing data
 
-Variables : voir `.env.example`. Test local sans compte : laisser les clés vides (mode simulation).
+Keep DATA_DIR, orders.json, promo-uses.json and any Redis configuration unchanged. This version reads promo counters only and does not modify existing orders, payment references or counters.
 
-## Langues
+Use a persistent DATA_DIR outside the deployed site. Empty defaults to landing-test/data; relative paths start at server.js. Startup fails if the directory is unusable.
 
-- Tous les textes sont dans `public/i18n.js` (clés `zh` et `en`). Pour modifier un texte, éditer là.
-- Sélecteur par drapeaux 🇹🇼 / 🇺🇸 (SVG, donc visibles aussi sous Windows). Choix mémorisé ; `?lang=en` force l'anglais.
-- La langue est transmise à NewebPay (`LangType`) : la page de paiement s'affiche dans la même langue.
-- Les `[ ... ]` dans les textes sont à compléter (délai de livraison, nombre de cartes, mentions légales).
+Redis remains optional and takes precedence via UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN or KV_REST_API_URL / KV_REST_API_TOKEN. No automatic data migration occurs. Do not change storage during this removal.
 
-## Mobile first
-
-CSS écrit pour le téléphone d'abord (`@media (min-width)` pour enrichir) : champs en 16 px (pas de zoom iOS), cibles tactiles >= 44 px, clavier adapté par champ (`inputmode`, `autocomplete`, `enterkeyhint`), cartes des habitats en carrousel tactile, barre « Commander » fixe en bas (masquée sur le bureau et sur la section commande), marges de sécurité iPhone (`safe-area`). Testé à 360, 390, 768 et 1280 px.
-
-## Prix, conversion et livraison
-
-- Prix **affiché en euros** : `PRICE_EUR` (19.90). Frais de port : `SHIPPING_EUR` (0 = offerts, ligne masquée).
-- **NewebPay (MPG) encaisse en TWD** : le serveur convertit le total en euros avec un taux fixe `EUR_TWD_RATE` (1 EUR = X TWD, à mettre à jour) et envoie un montant TWD entier. Le montant TWD est affiché au client avant le paiement ; le taux utilisé est enregistré dans chaque commande. La banque du client applique ensuite son propre taux.
-- Vérifier avec NewebPay s'il existe, pour votre compte, une option de paiement en devise étrangère (service multi-devises) ; sinon la conversion se fait comme ci-dessus.
-- Livraison **Europe** : UE, Suisse, Royaume-Uni, Norvège. Formulaire : adresse, code postal, ville, pays, téléphone avec indicatif.
-
-## Codes promo
-
-`promo-codes.json` : `percent` (% du sous-total) ou `amount_eur` (montant fixe par commande), avec `maxUses` et `expires`. Le serveur recalcule toujours le prix ; le navigateur ne décide jamais du montant. Un code n'est consommé qu'à la réception d'un paiement validé (le montant TWD notifié doit correspondre). Codes de test : `TEST10`, `WELCOME5`.
-
-## Routes
-
-| Route | Rôle |
-|---|---|
-| `POST /api/quote` | calcule totaux et promo |
-| `POST /api/checkout` | valide le formulaire, crée la commande, prépare le formulaire NewebPay |
-| `POST /payment/notify` | confirmation serveur à serveur (seule source de vérité ; le montant payé doit correspondre) |
-| `POST /payment/return` | retour du client, affichage uniquement |
-
-Sans Redis, les commandes sont stockées dans `<DATA_DIR>/orders.json` et les utilisations des promotions dans `<DATA_DIR>/promo-uses.json`. `DATA_DIR` vide conserve le dossier local `data/` ; un chemin relatif part du dossier de `server.js`. Le processus Node.js doit pouvoir créer et écrire ce dossier. Sur Hostinger, le choisir hors du site et vérifier sa conservation après redéploiement. Pour migrer les données, suivre le guide avant de changer le chemin.
-
-`UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN` (ou `KV_REST_API_URL` / `KV_REST_API_TOKEN`) activent Redis à la place des fichiers. Le stockage JSON est prévu pour une seule instance ; Redis est nécessaire pour partager les données entre plusieurs instances.
-
-## Tests du paiement sans compte réel
-
-```bash
-npm test
-```
-
-Les tests démarrent de faux services Airwallex/Redis avec des identifiants factices. Ils vérifient aussi un paiement stocké dans un `DATA_DIR` externe, son maintien après redémarrage et l'absence de double comptage promotionnel lors de nouvelles notifications. Les clés réelles ne sont pas nécessaires.
-
-## Visuels
-
-`public/img/` : face de la boîte, ours et 4 cartes, extraits des fichiers fournis (basse résolution). À remplacer par les exports haute définition.
-
-## Avant la production
-
-- Compte marchand NewebPay de production et cartes activées ; `NEWEBPAY_GATEWAY=https://core.newebpay.com/MPG/mpg_gateway`, HTTPS obligatoire.
-- Mentions légales pour la vente à des consommateurs européens : identité du vendeur, adresse, contact, droit de rétractation de 14 jours, TVA (prix TTC, guichet OSS selon le cas), CGV, politique de confidentialité (RGPD). Côté Taïwan : 統一編號.
-- Pour la phase Taïwan : moyens de paiement locaux (ATM virtuel, supérette) possibles avec NewebPay, mais asynchrones, donc à gérer dans `/payment/notify`.
-- Remplacer le stockage fichier par une vraie base, envoyer un e-mail de confirmation.
+See DEPLOIEMENT-HOSTINGER.md for redeployment and retiring the former provider.

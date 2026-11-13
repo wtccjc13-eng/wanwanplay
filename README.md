@@ -1,23 +1,11 @@
 # WanWanPlay
 
-The current homepage is the bilingual landing page in `landing-test/public/`. The previous static website and its assets remain in `dist/`.
+The production Node.js site is in landing-test/. Hostinger deploys feature/airwallex-checkout (historical branch name), Express on Node.js 22, root landing-test, entry server.js.
 
-## Hostinger Git deployment
+**Online checkout is temporarily unavailable.** The former payment integration and simulated payment routes have been removed. PayPal is planned separately. Product pages, language selection, price previews and promo validation remain available.
 
-Deploy the `main` branch into the website's document root (normally `public_html/`). Include the tracked `.htaccess` file at that root.
+Keep the existing persistent DATA_DIR or optional Redis configuration. Preserve existing orders and promo counters. See landing-test/README.md and landing-test/DEPLOIEMENT-HOSTINGER.md for setup, verification and retiring the former payment account.
 
-The root `.htaccess` internally serves `/` from `landing-test/public/index.html` and resolves its scripts and images from `landing-test/public/`. Visitors keep the normal homepage URL. Existing build assets and direct `/dist/` URLs continue to work.
+For local preview run npm ci, npm start and npm test inside landing-test/.
 
-After redeploying, check the new homepage, product images, and language selector. Clear the website's Hostinger cache if the old homepage is still displayed.
-
-This Git deployment serves the landing page as static files. Its pricing, promo, and checkout APIs require the Node.js app in `landing-test/server.js`; Apache rewrite rules do not run that server. Configure Node.js hosting before using the order flow. See `landing-test/README.md` for backend setup.
-
-For the Airwallex Node.js application on `feature/airwallex-checkout`, follow `landing-test/DEPLOIEMENT-HOSTINGER.md`. Set `DATA_DIR` to a persistent writable directory outside the deployed site, or configure the optional Redis backend. Keep the payment branch separate from `main` until the application is validated.
-
-## Other static hosts
-
-Set the publish directory to `landing-test/public`. No build command or package installation is required to display the page. `.openai/hosting.json` uses this directory as well. Checkout requires the backend described above.
-
-## Local preview
-
-Run `npm install` and `npm start` inside `landing-test/` to preview the full app in payment simulation mode when no payment credentials are configured. A plain static development server does not process the Apache/LiteSpeed `.htaccess` rules used by Hostinger.
+The previous static website remains in dist/. Do not merge this deployment branch into main as part of the removal. Static-only hosting does not provide the pricing and promo APIs.

@@ -1,4 +1,0 @@
-# Hostinger serves this public file directly, before the Express route.
-<Files "apple-developer-merchantid-domain-association">
-    ForceType application/octet-stream
-</Files>

@@ -2,7 +2,7 @@
   "name": "wanwanplay-landing-test",
   "version": "0.1.0",
   "private": true,
-  "description": "Landing page de test + paiement NewebPay (MPG) pour un jeu de cartes enfants",
+  "description": "WanWan Play bilingual product site (checkout temporarily unavailable)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

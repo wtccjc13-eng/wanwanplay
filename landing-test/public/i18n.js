@@ -5,10 +5,7 @@
     zh: {
       'meta.title': '灣灣好日子 野生動物版｜認識台灣動物的親子桌遊',
       'meta.desc': '《灣灣好日子》野生動物版：2 至 6 人的動物卡牌桌遊，5 歲以上都能玩。認識台灣的動物與棲地、練習繁體中文閱讀，一起學著守護牠們。',
-      'banner.sim': '測試模式｜模擬付款，不會扣款',
       'banner.unavailable': '付款功能準備中，暫時無法下單。',
-      'banner.np': '測試模式｜藍新金流（NewebPay）測試環境',
-      'banner.aw': '測試模式｜Airwallex 測試環境，不會扣款',
       'nav.order': '立即訂購',
 
       'hero.badge': '野生動物版',
@@ -77,10 +74,9 @@
       'f.qty': '數量',
       'f.ship.note': '目前配送歐洲地區（歐盟、瑞士、英國、挪威）。運費 [ 待補 ]。',
       'sum.sub': '小計', 'sum.disc': '折扣', 'sum.ship': '運費', 'sum.total': '總計',
-      'sum.pay': '前往付款',
-      'sum.secure': '🔒 付款由 Airwallex 安全處理，支援信用卡、Apple Pay 與 Google Pay，我們不會儲存你的卡號。',
+      'sum.pay': '暫時無法付款',
+      'sum.secure': '線上付款暫停中，目前無法送出訂單或付款。',
       'promo.ok': '已套用優惠碼 ✓',
-      'sum.twd': '結帳時，藍新金流將以新台幣 {n} 扣款（參考匯率；實際入帳金額依你的發卡銀行匯率，可能略有差異）。',
       'err.PROMO_UNKNOWN': '找不到這組優惠碼。',
       'err.PROMO_EXPIRED': '這組優惠碼已過期。',
       'err.PROMO_EXHAUSTED': '這組優惠碼已被使用完畢。',
@@ -96,24 +92,21 @@
       'faq.1.q': '適合幾歲的孩子？', 'faq.1.a': '5 歲以上都能玩，最適合 5 至 14 歲的孩子，大人一起玩也很有趣。內含小卡片，不適合 3 歲以下幼兒。',
       'faq.2.q': '還不太會認字，也能玩嗎？', 'faq.2.a': '可以。比大小只要認得數字就能玩；小檔案附有注音，也可以請大人陪著一起讀。',
       'faq.3.q': '多久會收到商品？', 'faq.3.a': '付款完成後約 [ 待補 ] 個工作天寄達歐洲各地，並會寄出訂單確認信。',
-      'faq.4.q': '付款方式與幣別？', 'faq.4.a': '網站以歐元（€）標價，並以歐元扣款。可使用 Visa、Mastercard、Apple Pay 與 Google Pay，由 Airwallex 安全處理。',
+      'faq.4.q': '付款方式與幣別？', 'faq.4.a': '網站以歐元（€）標價。新的付款服務準備中，線上結帳暫停。',
       'faq.5.q': '優惠碼怎麼使用？', 'faq.5.a': '在訂購區輸入優惠碼，按「套用」，折扣就會顯示在總計裡。',
 
       'foot.main': '© 2026 WanWan Play 灣灣・方元創意有限公司（Fangyuan Creative）',
       'foot.privacy': '隱私權政策', 'foot.terms': '服務條款', 'foot.contact': '聯絡我們',
       'foot.todo': '[ 待補：統一編號、公司地址、客服信箱、歐盟 14 天猶豫期（退貨）與增值稅（VAT）說明 ]',
 
-      'ok.t': '感謝你的訂購！', 'ok.d': '我們已收到你的付款，訂單確認信會寄到你的信箱。', 'ok.ref': '訂單編號：', 'ok.back': '回到首頁',
-      'ko.t': '付款尚未完成', 'ko.d': '這次沒有扣款，你可以隨時重新訂購。', 'ko.back': '回到訂購頁'
+      'ok.t': '無法確認付款狀態', 'ok.d': '此頁面不代表付款成功，目前線上結帳暫停。', 'ok.ref': '訂單編號：', 'ok.back': '回到首頁',
+      'ko.t': '付款尚未完成', 'ko.d': '目前線上結帳暫停。此頁面無法確認付款狀態。', 'ko.back': '回到訂購頁'
     },
 
     en: {
       'meta.title': '灣灣好日子 Wildlife Edition | Taiwan animal card game for kids — WanWan Play',
       'meta.desc': 'WanWan Play\'s 灣灣好日子 Wildlife Edition: a card game for 2–6 players, ages 5+. Discover Taiwan\'s animals and habitats, practise reading Traditional Chinese, and learn how to protect them.',
-      'banner.sim': 'TEST MODE | simulated payment, no charge',
       'banner.unavailable': 'Checkout is being prepared. Orders are temporarily unavailable.',
-      'banner.np': 'TEST MODE | NewebPay test environment',
-      'banner.aw': 'TEST MODE | Airwallex demo environment, no charge',
       'nav.order': 'Order now',
 
       'hero.badge': 'Wildlife Edition',
@@ -182,10 +175,9 @@
       'f.qty': 'Quantity',
       'f.ship.note': 'We currently deliver across Europe (EU, Switzerland, UK, Norway). Shipping fee: [ TBD ].',
       'sum.sub': 'Subtotal', 'sum.disc': 'Discount', 'sum.ship': 'Shipping', 'sum.total': 'Total',
-      'sum.pay': 'Continue to payment',
-      'sum.secure': '🔒 Secure payment by Airwallex: credit card, Apple Pay and Google Pay. We never see or store your card number.',
+      'sum.pay': 'Checkout temporarily unavailable',
+      'sum.secure': 'Online payment is temporarily unavailable. No orders or payments can be submitted.',
       'promo.ok': 'Promo code applied ✓',
-      'sum.twd': 'At checkout, NewebPay will charge about NT${n} (indicative rate; the amount on your statement depends on your bank\'s conversion and may differ slightly).',
       'err.PROMO_UNKNOWN': 'This promo code was not found.',
       'err.PROMO_EXPIRED': 'This promo code has expired.',
       'err.PROMO_EXHAUSTED': 'This promo code is no longer available.',
@@ -201,15 +193,15 @@
       'faq.1.q': 'What age is it for?', 'faq.1.a': 'Anyone aged 5 and up can play; it works best for kids aged 5 to 14, and adults enjoy it too. It contains small cards and is not suitable for children under 3.',
       'faq.2.q': 'Can kids who can\'t read much yet play?', 'faq.2.a': 'Yes. Comparing numbers is enough to play, and the profiles come with zhuyin, so a grown-up can read along.',
       'faq.3.q': 'When will I receive my order?', 'faq.3.a': 'About [ TBD ] business days after payment, by home delivery. You will get an order confirmation email.',
-      'faq.4.q': 'Which currency and payment methods?', 'faq.4.a': 'Prices are in euros (€) and you are charged in euros. You can pay with Visa, Mastercard, Apple Pay or Google Pay, securely processed by Airwallex.',
+      'faq.4.q': 'Which currency and payment methods?', 'faq.4.a': 'Prices are displayed in euros (€). Online checkout is temporarily unavailable while we prepare a replacement payment service.',
       'faq.5.q': 'How do I use a promo code?', 'faq.5.a': 'Enter it in the order section and press "Apply". The discount appears in your total.',
 
       'foot.main': '© 2026 WanWan Play 灣灣 · Fangyuan Creative (方元創意有限公司)',
       'foot.privacy': 'Privacy policy', 'foot.terms': 'Terms', 'foot.contact': 'Contact',
       'foot.todo': '[ TBD: company tax ID (統一編號), address, support email, EU 14-day withdrawal right and VAT information ]',
 
-      'ok.t': 'Thank you for your order!', 'ok.d': 'We\'ve received your payment. A confirmation email is on its way.', 'ok.ref': 'Order: ', 'ok.back': 'Back to home',
-      'ko.t': 'Payment not completed', 'ko.d': 'You were not charged. You can order again anytime.', 'ko.back': 'Back to order'
+      'ok.t': 'Payment status unavailable', 'ok.d': 'This page does not confirm a payment. Online checkout is currently unavailable.', 'ok.ref': 'Order: ', 'ok.back': 'Back to home',
+      'ko.t': 'Payment not completed', 'ko.d': 'Online checkout is currently unavailable. This page does not confirm payment status.', 'ko.back': 'Back to order'
     }
   };
 
