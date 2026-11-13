@@ -3,6 +3,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('node:crypto');
 
 const {
   PORT = 3000,
@@ -12,9 +13,11 @@ const {
   SHIPPING_EUR = '0',
 } = process.env;
 
-// Checkout is closed until the replacement payment provider is integrated.
+// Prices and promotion totals are always calculated on the server.
 const PRICE_CENTS = Math.round(parseFloat(PRICE_EUR) * 100);       // prix unitaire affiché, en centimes d'euro
 const SHIPPING_CENTS = Math.round(parseFloat(SHIPPING_EUR) * 100);  // frais de port par commande, en centimes
+if (!Number.isSafeInteger(PRICE_CENTS) || PRICE_CENTS < 100 ||
+    !Number.isSafeInteger(SHIPPING_CENTS) || SHIPPING_CENTS < 0) throw new Error('Invalid product pricing');
 // ---------- Stockage ----------
 // Par défaut : fichiers JSON dans DATA_DIR (hébergement avec disque persistant, ex. Hostinger Node.js).
 // Option : base Redis (Upstash) si UPSTASH_REDIS_REST_URL / _TOKEN (ou KV_REST_API_URL / _TOKEN) sont définies,
@@ -39,26 +42,11 @@ const redis = async (...cmd) => {
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(__dirname, process.env.DATA_DIR)
   : (process.env.VERCEL ? path.join(os.tmpdir(), 'wanwanplay-data') : path.join(__dirname, 'data'));
-const USES_FILE = path.join(DATA_DIR, 'promo-uses.json');
-if (!USE_REDIS) {
-  // Échouer au démarrage plutôt qu'accepter des commandes sans stockage utilisable.
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.accessSync(DATA_DIR, fs.constants.W_OK);
-}
-if (process.env.VERCEL && !USE_REDIS) console.warn('[stockage] ATTENTION : disque éphémère et pas de base Redis, les commandes seront perdues.');
-
-const readJson = (f, fallback) => {
-  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return fallback; }
-};
-const loadPromos = () => readJson(path.join(__dirname, 'promo-codes.json'), []);
-
-// Existing orders and promo counters are retained; no route modifies payment data.
-const db = {
-  async promoUses(code) {
-    if (USE_REDIS) return parseInt(await redis('GET', `promo:${code}`), 10) || 0;
-    return readJson(USES_FILE, {})[code] || 0;
-  },
-};
+const db = require('./storage')(DATA_DIR, USE_REDIS ? redis : null);
+const paypal = require('./paypal')(db);
+const CHECKOUT_READY = paypal.ready && !(process.env.VERCEL && !USE_REDIS);
+const COUNTRIES = ['FR','BE','CH','LU','DE','NL','IT','ES','PT','GB','IE','AT','DK','SE','FI','NO','PL','CZ','SK','HU','SI','HR','RO','BG','GR','CY','MT','EE','LV','LT'];
+const loadPromos = () => JSON.parse(fs.readFileSync(path.join(__dirname, 'promo-codes.json'), 'utf8'));
 
 // Erreur à code stable : le navigateur traduit le message selon la langue
 class ApiError extends Error {
@@ -90,12 +78,17 @@ async function computeTotals(quantity, promoCode) {
 
 // ---------- App ----------
 const app = express();
-app.use(express.json());
+app.use((_req, res, next) => {
+  res.set('Referrer-Policy', 'no-referrer');
+  next();
+});
+app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+app.use(express.json({ limit: '128kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/config', (_req, res) => {
-  res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, simulation: false, provider: 'none', checkoutReady: false });
+  res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, simulation: false, provider: CHECKOUT_READY ? 'paypal' : 'none', checkoutReady: CHECKOUT_READY, paypalEnv: paypal.env, paypalClientId: CHECKOUT_READY ? paypal.clientId : null });
 });
 
 app.post('/api/quote', async (req, res) => {
@@ -103,20 +96,82 @@ app.post('/api/quote', async (req, res) => {
     res.json({ ok: true, ...(await computeTotals(req.body.quantity, req.body.promoCode)) });
   } catch (e) {
     if (e instanceof ApiError) return res.status(400).json({ code: e.code });
-    console.error('[quote erreur]', e.message);
+    console.error('[quote erreur] INTERNAL');
     res.status(500).json({ code: 'GENERIC' });
   }
 });
 
-// No order creation, payment redirect, callback or simulated payment is exposed.
-app.post('/api/checkout', (_req, res) => {
-  res.status(503).json({ code: 'PAYMENT_UNAVAILABLE' });
+function errorResponse(res, error) {
+  if (error instanceof ApiError) return res.status(400).json({ code: error.code });
+  // Never log upstream responses, credentials or customer data.
+  console.error('[paiement erreur]', ['PAYMENT_MISMATCH', 'PAYPAL_API', 'PAYPAL_AUTH'].includes(error.message) ? error.message : 'INTERNAL');
+  res.status(502).json({ code: 'GENERIC' });
+}
+async function authorize(req, res) {
+  if (!/^WW[A-F0-9]{32}$/.test(req.params.id)) { res.status(404).json({ code: 'ORDER_UNKNOWN' }); return null; }
+  const order = await db.getOrder(req.params.id);
+  const secret = (req.get('authorization') || '').replace(/^Bearer /, '');
+  if (!order || !/^[a-f0-9]{64}$/.test(secret) || !order.checkoutTokenHash ||
+      !crypto.timingSafeEqual(Buffer.from(paypal.tokenHash(secret)), Buffer.from(order.checkoutTokenHash))) {
+    res.status(404).json({ code: 'ORDER_UNKNOWN' }); return null;
+  }
+  return order;
+}
+app.post('/api/checkout', async (req, res) => {
+  if (!CHECKOUT_READY) return res.status(503).json({ code: 'PAYMENT_UNAVAILABLE' });
+  try {
+    const customer = {};
+    for (const [key, limit] of Object.entries({ name: 120, phone: 20, email: 254, address: 300, zip: 10, city: 120, country: 2 })) {
+      const value = req.body[key];
+      if (typeof value !== 'string' || !value.trim() || value.trim().length > limit) throw new ApiError('FIELDS_MISSING');
+      customer[key] = value.trim();
+    }
+    if (!COUNTRIES.includes(customer.country)) throw new ApiError('COUNTRY_INVALID');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(customer.email)) throw new ApiError('EMAIL_INVALID');
+    if (!/^[0-9+\-\s().]{8,20}$/.test(customer.phone)) throw new ApiError('PHONE_INVALID');
+    if (!/^[A-Za-z0-9][A-Za-z0-9 \-]{1,9}$/.test(customer.zip)) throw new ApiError('ZIP_INVALID');
+    const totals = await computeTotals(req.body.quantity, req.body.promoCode);
+    if (!Number.isSafeInteger(totals.totalCents) || totals.totalCents < 100) throw new Error('PRICE_INVALID');
+    const checkoutToken = crypto.randomBytes(32).toString('hex');
+    const order = { id: 'WW' + crypto.randomBytes(16).toString('hex').toUpperCase(),
+      status: 'pending', provider: 'paypal', lang: req.body.lang === 'en' ? 'en' : 'zh',
+      createdAt: new Date().toISOString(), ...totals, promoCode: totals.code, customer,
+      checkoutTokenHash: paypal.tokenHash(checkoutToken) };
+    await db.saveOrder(order);
+    const paypalOrderId = await paypal.create(order, PRODUCT_NAME);
+    await db.saveOrder(order);
+    res.json({ orderId: order.id, paypalOrderId, checkoutToken });
+  } catch (e) { errorResponse(res, e); }
+});
+app.get('/api/orders/:id', async (req, res) => {
+  try {
+    const order = await authorize(req, res); if (!order) return;
+    res.json({ orderId: order.id, status: order.status, totalCents: order.totalCents });
+  } catch (e) { errorResponse(res, e); }
+});
+app.post('/api/orders/:id/capture', async (req, res) => {
+  if (!CHECKOUT_READY) return res.status(503).json({ code: 'PAYMENT_UNAVAILABLE' });
+  try {
+    const order = await authorize(req, res); if (!order) return;
+    const status = order.status === 'paid' ? 'paid' : await paypal.capture(order);
+    res.json({ orderId: order.id, status });
+  } catch (e) { errorResponse(res, e); }
+});
+app.post('/paypal/webhook', async (req, res) => {
+  if (!CHECKOUT_READY) return res.status(503).end();
+  try {
+    if (!await paypal.webhook(req)) return res.status(401).end();
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('[webhook erreur] Retry required');
+    res.sendStatus(500);
+  }
 });
 
 // Hébergement serverless : l'application est exportée (pas de listen). Sinon (Hostinger, local) on démarre le serveur.
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Site sur ${BASE_URL} — paiement indisponible — stockage : ${USE_REDIS ? 'Redis' : 'fichiers ' + DATA_DIR}`);
+    console.log(`Site sur ${BASE_URL} — paiement : ${CHECKOUT_READY ? 'PayPal ' + paypal.env : 'indisponible'} — stockage : ${USE_REDIS ? 'Redis' : 'fichiers ' + DATA_DIR}`);
   });
 }
 

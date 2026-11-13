@@ -2,7 +2,7 @@
 
 The production Node.js site is in landing-test/. Hostinger deploys feature/airwallex-checkout (historical branch name), Express on Node.js 22, root landing-test, entry server.js.
 
-**Online checkout is temporarily unavailable.** The former payment integration and simulated payment routes have been removed. PayPal is planned separately. Product pages, language selection, price previews and promo validation remain available.
+**PayPal checkout is implemented and stays closed until all required PayPal settings are configured.** The former payment integration and simulated payment routes remain removed. Product pages, language selection, price previews and promo validation are preserved.
 
 Keep the existing persistent DATA_DIR or optional Redis configuration. Preserve existing orders and promo counters. See landing-test/README.md and landing-test/DEPLOIEMENT-HOSTINGER.md for setup, verification and retiring the former payment account.
 

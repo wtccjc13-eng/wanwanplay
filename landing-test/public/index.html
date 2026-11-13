@@ -380,6 +380,7 @@
           <div class="line" id="shipLine" hidden><span data-i18n="sum.ship"></span><span id="ship">—</span></div>
           <div class="line total"><span data-i18n="sum.total"></span><span id="total">—</span></div>
           <button class="btn" id="pay" type="submit" disabled style="width:100%;margin-top:18px" data-i18n="sum.pay"></button>
+          <div id="paypal-buttons" style="margin-top:18px" hidden></div>
           <div class="msg err" id="err" role="alert"></div>
           <div class="secure" data-i18n="sum.secure"></div>
         </div>
@@ -420,6 +421,8 @@ const $ = (id) => document.getElementById(id);
 const t = (k) => I18N.t(k);
 let appliedPromo = '';
 let lastQuote = null;
+let cfg = { checkoutReady: false };
+let attempt = null, creating = false;
 
 let errCode = '', promoState = null;   // {kind:'ok'|'err', code?}
 
@@ -448,8 +451,9 @@ function renderMsgs() {
 }
 function renderBanner() {
   const b = $('banner');
-  b.hidden = false;
-  b.textContent = t('banner.unavailable');
+  b.hidden = cfg.checkoutReady && cfg.paypalEnv === 'live';
+  b.textContent = t(cfg.checkoutReady ? 'banner.paypalSandbox' : 'banner.unavailable');
+  document.querySelector('[data-i18n="sum.secure"]').textContent = t(cfg.checkoutReady ? 'paypal.secure' : 'sum.secure');
 }
 const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(async r => ({ok: r.ok, d: await r.json()}));
 
@@ -476,8 +480,7 @@ $('applyPromo').addEventListener('click', async () => {
 
 $('form').addEventListener('submit', (e) => {
   e.preventDefault();
-  errCode = 'PAYMENT_UNAVAILABLE';
-  renderMsgs();
+  if (!cfg.checkoutReady) { errCode = 'PAYMENT_UNAVAILABLE'; renderMsgs(); }
 });
 
 document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => I18N.set(b.dataset.lang)));
@@ -491,10 +494,68 @@ document.addEventListener('langchange', () => {
   document.querySelector('img.bear').alt = alts[5];
 });
 
-fetch('/api/config').then(r => r.json()).then(c => {
+function statusPage() {
+  location.href = '/success.html?lang=' + I18N.lang + '&order=' + encodeURIComponent(attempt.orderId);
+}
+function lockForm(locked) {
+  $('form').querySelectorAll('input,select,button').forEach(el => { if (el.id !== 'pay') el.disabled = locked; });
+}
+async function setupPayPal() {
+  const script = document.createElement('script');
+  script.src = 'https://www.paypal.com/sdk/js?' + new URLSearchParams({
+    'client-id': cfg.paypalClientId, currency: 'EUR', intent: 'capture', components: 'buttons',
+    locale: I18N.lang === 'en' ? 'en_US' : 'zh_TW',
+  });
+  await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; document.head.appendChild(script); });
+  $('paypal-buttons').hidden = false;
+  await window.paypal.Buttons({
+    style: { layout: 'vertical', label: 'pay' },
+    onClick(_data, actions) {
+      if (creating || attempt || !$('form').reportValidity()) return actions.reject();
+      try { sessionStorage.setItem('ww-storage-check', '1'); sessionStorage.removeItem('ww-storage-check'); }
+      catch { errCode = 'STORAGE_REQUIRED'; renderMsgs(); return actions.reject(); }
+      errCode = ''; renderMsgs(); return actions.resolve();
+    },
+    async createOrder() {
+      creating = true;
+      const body = Object.fromEntries(new FormData($('form')).entries());
+      body.promoCode = appliedPromo; body.lang = I18N.lang;
+      lockForm(true);
+      try {
+        const { ok, d } = await post('/api/checkout', body);
+        if (!ok) { errCode = d.code || 'GENERIC'; throw new Error('Checkout unavailable'); }
+        attempt = d;
+        sessionStorage.setItem('ww-order-' + d.orderId, d.checkoutToken);
+        return d.paypalOrderId;
+      } catch (error) {
+        if (!attempt) lockForm(false);
+        if (!errCode) errCode = 'GENERIC'; renderMsgs(); throw error;
+      } finally { creating = false; }
+    },
+    async onApprove(data) {
+      if (!attempt || data.orderID !== attempt.paypalOrderId) { errCode = 'GENERIC'; renderMsgs(); return; }
+      // Keep the same order after any timeout; the status page safely retries capture.
+      try {
+        await fetch('/api/orders/' + attempt.orderId + '/capture', { method: 'POST',
+          headers: { Authorization: 'Bearer ' + attempt.checkoutToken } });
+      } finally { statusPage(); }
+    },
+    onCancel() {
+      attempt = null; lockForm(false); errCode = 'PAYMENT_CANCELLED'; renderMsgs();
+    },
+    onError() {
+      if (attempt) { statusPage(); return; }
+      lockForm(false); errCode = errCode || 'GENERIC'; renderMsgs();
+    },
+  }).render('#paypal-buttons');
+  $('pay').hidden = true;
+}
+fetch('/api/config').then(r => r.json()).then(async c => {
+  cfg = c;
   document.querySelectorAll('.price-label').forEach(el => el.textContent = I18N.money(c.priceCents));
   renderBanner();
-});
+  if (c.checkoutReady) await setupPayPal();
+}).catch(() => { errCode = 'GENERIC'; renderMsgs(); });
 I18N.apply();
 renderBanner();
 refresh();

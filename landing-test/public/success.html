@@ -2,16 +2,41 @@
 <html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>🎉</title>
 <style>body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;max-width:480px;margin:80px auto;padding:0 20px;text-align:center;color:#1d3a33;line-height:1.8}a{color:#1b9344;font-weight:700}</style></head>
 <body>
-<div style="font-size:3rem">🎉</div>
+<div id="icon" style="font-size:3rem">⌛</div>
 <h1 data-i18n="ok.t"></h1>
 <p data-i18n="ok.d"></p>
 <p id="o" style="color:#47665d"></p>
+<button id="check" type="button" data-i18n="paypal.check" style="padding:12px 20px;margin-bottom:20px"></button><br>
 <a href="/" id="home" data-i18n="ok.back"></a>
 <script src="i18n.js"></script>
 <script>
-document.addEventListener('langchange',()=>{document.title=I18N.t('ok.t');
-  const o=new URLSearchParams(location.search).get('order'); if(o) document.getElementById('o').textContent=I18N.t('ok.ref')+o;
-  document.getElementById('home').href='/?lang='+I18N.lang;});
-I18N.apply();
+const order = new URLSearchParams(location.search).get('order');
+let state = 'unknown', token;
+try { token = sessionStorage.getItem('ww-order-' + order); } catch {}
+function render() {
+  const key = state === 'paid' ? 'paid' : state === 'pending' ? 'pending' : state === 'failed' ? 'failed' : 'unknown';
+  document.querySelector('h1').textContent = I18N.t('paypal.' + key + '.title');
+  document.querySelector('[data-i18n="ok.d"]').textContent = I18N.t('paypal.' + key + '.detail');
+  document.title = I18N.t('paypal.' + key + '.title');
+  document.getElementById('icon').textContent = state === 'paid' ? '✓' : '⌛';
+  document.getElementById('o').textContent = /^WW[A-F0-9]{32}$/.test(order || '') ? I18N.t('ok.ref') + order : '';
+  document.getElementById('check').hidden = !token || state === 'paid';
+  document.getElementById('home').href = '/?lang=' + I18N.lang;
+}
+async function check(capture = false) {
+  if (!token || !/^WW[A-F0-9]{32}$/.test(order || '')) return render();
+  const button = document.getElementById('check'); button.disabled = true;
+  try {
+    const response = await fetch('/api/orders/' + order + (capture ? '/capture' : ''), {
+      method: capture ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + token }, cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Unavailable');
+    const result = await response.json(); state = result.status;
+  } catch { state = 'unknown'; }
+  finally { button.disabled = false; render(); }
+}
+document.getElementById('check').addEventListener('click', () => check(true));
+document.addEventListener('langchange', render);
+I18N.apply(); check();
 </script>
 </body></html>

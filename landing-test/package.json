@@ -2,7 +2,7 @@
   "name": "wanwanplay-landing-test",
   "version": "0.1.0",
   "private": true,
-  "description": "WanWan Play bilingual product site (checkout temporarily unavailable)",
+  "description": "WanWan Play bilingual product site with PayPal checkout",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

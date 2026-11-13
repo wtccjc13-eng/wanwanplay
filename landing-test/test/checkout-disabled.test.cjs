@@ -12,6 +12,7 @@ async function startApp(dataDir, env = {}) {
   const child = spawn(process.execPath, ['-e', "const app=require('./server');const s=app.listen(0,'127.0.0.1',()=>console.log('READY:'+s.address().port));"], {
     cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATA_DIR: dataDir, VERCEL: '', PRICE_EUR: '19.90', SHIPPING_EUR: '0',
+      PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: '', PAYPAL_CLIENT_SECRET: '', PAYPAL_WEBHOOK_ID: '', PAYPAL_MERCHANT_ID: '',
       UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '', KV_REST_API_URL: '', KV_REST_API_TOKEN: '', ...env },
   });
   let output = '';

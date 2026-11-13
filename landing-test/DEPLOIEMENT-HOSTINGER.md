@@ -1,25 +1,61 @@
-# Hostinger deployment — checkout disabled
+# Hostinger — PayPal setup
 
-Existing application: https://wanwanplay.com. Repository: wtccjc13-eng/wanwanplay. Branch: feature/airwallex-checkout (historical name retained). Do not merge into main.
+Existing app: https://wanwanplay.com. Repository wtccjc13-eng/wanwanplay, branch feature/airwallex-checkout (historical name retained). Keep main unchanged. Use Node.js 22, Express, root landing-test, entry server.js, npm installation and no build step.
 
-## Redeploy
+## 1. PayPal Business app
 
-1. Back up existing data. Keep the same persistent DATA_DIR outside the deployed site and the same Redis configuration if used. Do not delete orders or promo counters.
-2. Redeploy the latest branch in the existing hPanel Node.js application. Keep Node.js 22, Express, root landing-test, entry server.js, npm installation and no build step.
-3. Keep BASE_URL=https://wanwanplay.com, NODE_ENV=production and existing product/pricing settings.
-4. Check Chinese and English pages, images, quantities and promo previews. The banner and disabled button must show that checkout is unavailable.
-5. Check /api/config: provider none, checkoutReady false, simulation false. POST /api/checkout must return 503 PAYMENT_UNAVAILABLE. Former callbacks and simulation endpoints must return 404.
+Sign into https://developer.paypal.com/dashboard/ with the Taiwanese company Business account. In Apps & Credentials, select Sandbox and create a merchant app called WanWan Play linked to the sandbox Business seller. Keep the sandbox personal buyer separate from the seller.
 
-This version has no payment provider. PayPal is a separate upcoming integration. Do not advertise cards or mobile wallets before validating that integration.
+Obtain the app Client ID and Secret. Find the seller Merchant ID in Account Settings > Business information on sandbox.paypal.com. For production use the actual company's Business account on paypal.com and a Live app; do not mix sandbox and live values.
 
-## Retire Airwallex
+Official Merchant ID instructions: https://www.paypal.com/us/cshelp/article/how-do-i-find-my-secure-merchant-id-on-my-paypal-account-help538
 
-The code no longer reads any AIRWALLEX_* variables. Credentials left in hPanel cannot activate payments. Remove those variables individually in hPanel, preserving all other variables and secrets. Do not replace the complete environment-variable set.
+## 2. Register the webhook
 
-The /airwallex/webhook endpoint is removed and returns 404 after deployment. Reconcile outstanding transactions against retained orders before disabling the webhook in the merchant account. Late transactions require manual reconciliation. Once reconciled, disable the webhook and revoke API credentials. Keep access to transaction history for refunds and disputes.
+Inside the matching Sandbox app's webhook settings, add:
 
-The Apple merchant verification file supplied for the former provider is removed. A future wallet integration may require its own file.
+https://wanwanplay.com/paypal/webhook
 
-## Local verification
+Subscribe to these four events:
+- CHECKOUT.ORDER.APPROVED
+- PAYMENT.CAPTURE.COMPLETED
+- PAYMENT.CAPTURE.PENDING
+- PAYMENT.CAPTURE.DENIED
 
-Run npm ci and npm test in landing-test. Tests cover blocked checkout and former endpoints, pricing and promotions, unchanged existing data after restart, and read-only Redis promo access. No merchant credentials or real payments are used.
+Copy the generated Webhook ID. This is the ID of the registration, not an invented signing secret. Our server asks PayPal to verify each event against this ID. The endpoint may return 503 until all settings are entered and the app is redeployed.
+
+## 3. Hostinger variables
+
+Open the existing wanwanplay.com Node.js application in hPanel, then Environment Variables. Add these individually; preserve all unrelated variables and secrets:
+
+| Variable | Sandbox value | Production value |
+| --- | --- | --- |
+| PAYPAL_ENV | sandbox | live |
+| PAYPAL_CLIENT_ID | Sandbox app Client ID | Live app Client ID |
+| PAYPAL_CLIENT_SECRET | Sandbox app Secret | Live app Secret |
+| PAYPAL_WEBHOOK_ID | Sandbox registration ID | Live registration ID |
+| PAYPAL_MERCHANT_ID | Sandbox Business seller Merchant ID | Taiwanese company Merchant ID |
+
+Keep BASE_URL=https://wanwanplay.com, NODE_ENV=production and existing price/product settings. Keep DATA_DIR and existing Redis settings unchanged. DATA_DIR must stay persistent and outside the deployed site. Never paste secrets into GitHub, commits, chat or logs. Do not configure PAYPAL_TEST_API_BASE on Hostinger; it is accepted only by local tests in NODE_ENV=test.
+
+The extra Merchant ID check ensures the payment recipient matches the intended company. All five PayPal settings are required. Redeploy or restart after variable changes. No credentials are supplied by this repository.
+
+## 4. Deploy and test sandbox
+
+1. Back up existing data (including payment-journal.json if present); keep the same storage location. File storage requires one Node.js process. Use Redis for multiple instances.
+2. Redeploy the latest feature branch in the existing app. Auto-deploy may already have started on push.
+3. Check /api/config for provider paypal, checkoutReady true and paypalEnv sandbox. No secret should appear. The site must show a sandbox banner and PayPal buttons. With any required setting missing, checkout must remain closed.
+4. In a real browser, try Chinese and English, mobile and desktop, valid/invalid shipping details, quantity changes, TEST10 and cancellation before approval. Use a sandbox buyer, never a real card in sandbox.
+5. Complete a sandbox purchase. Check PayPal transaction details and the saved order's paid status, exact amount, Merchant ID and paypalCaptureId. Confirm the promo counter increased once, including after webhook redelivery and page refresh. Verify actual webhook delivery in PayPal's event dashboard. A simulator event is not a real purchase.
+6. Test a pending/failed payment where supported and retry after an interrupted browser connection. The status page must not claim paid until the server confirms capture. Preserve the same order when retrying.
+7. Confirm persisted orders and promo counters survive a redeploy. Check eligible guest-card checkout using your actual merchant account; do not promise cards, Apple Pay or Google Pay that PayPal does not display.
+
+Automated tests use local fake services. Real sandbox SDK, account eligibility and real delivery still need the checks above.
+
+## 5. Switch live
+
+After sandbox validation, create/select the company's Live app, register the same webhook URL in Live with the same four events, and replace ALL five variables with matching Live values (PAYPAL_ENV=live). Redeploy, make an agreed real purchase, check actual capture/webhook/order status and refund it through PayPal. Never mark an order paid from a browser return alone. Refund/dispute synchronization, confirmation emails and fulfillment automation are not part of this integration.
+
+## Retired provider
+
+AIRWALLEX_* settings are unused and may be removed individually. The old webhook and simulated payments remain 404. Reconcile any old outstanding transactions before disabling the former webhook and revoking credentials. Preserve historical payment references for refunds/disputes. The old Apple merchant association file remains removed; any future wallet integration may require its own verification.
