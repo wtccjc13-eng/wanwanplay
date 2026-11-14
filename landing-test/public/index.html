@@ -363,6 +363,9 @@
           <label for="promo" data-i18n="f.promo"></label>
           <div class="promo"><input id="promo" name="promoCode" data-i18n-ph="f.promo.ph" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="done"><button type="button" id="applyPromo" data-i18n="f.apply"></button></div>
           <div class="msg" id="promoMsg" role="status"></div>
+          <label for="deliveryPhone" data-i18n="f.deliveryPhone">配送聯絡電話（含國碼，必填）</label>
+          <input id="deliveryPhone" name="deliveryPhone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="40" placeholder="+33 6 12 34 56 78" aria-describedby="deliveryPhoneHelp">
+          <p id="deliveryPhoneHelp" class="shipnote" data-i18n="f.deliveryPhone.help">此電話僅用於聯絡本次訂單的配送事宜。請包含國際國碼（例如 +33）。</p>
           <div class="line" style="margin-top:16px"><span data-i18n="sum.sub"></span><span id="sub">—</span></div>
           <div class="line" id="discLine" hidden><span data-i18n="sum.disc"></span><span id="disc">—</span></div>
           <div class="line" id="shipLine" hidden><span data-i18n="sum.ship"></span><span id="ship">—</span></div>
@@ -487,6 +490,10 @@ function statusPage() {
 function lockForm(locked) {
   $('form').querySelectorAll('input,select,button').forEach(el => { if (el.id !== 'pay') el.disabled = locked; });
 }
+function deliveryPhone() {
+  const raw = $('deliveryPhone').value.trim(), normalized = raw.replace(/[ ().-]/g, '');
+  return raw.length <= 40 && /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : null;
+}
 async function setupPayPal() {
   const script = document.createElement('script');
   script.src = 'https://www.paypal.com/sdk/js?' + new URLSearchParams({
@@ -499,6 +506,7 @@ async function setupPayPal() {
     style: { layout: 'vertical', label: 'pay' },
     async onClick(_data, actions) {
       if (creating || preparing || attempt) return actions.reject();
+      if (!deliveryPhone()) { errCode = 'PHONE_INVALID'; renderMsgs(); $('deliveryPhone').focus(); return actions.reject(); }
       try { sessionStorage.setItem('ww-storage-check', '1'); sessionStorage.removeItem('ww-storage-check'); }
       catch { errCode = 'STORAGE_REQUIRED'; renderMsgs(); return actions.reject(); }
       preparing = true; lockForm(true); let valid = false;
@@ -508,8 +516,10 @@ async function setupPayPal() {
       return valid ? actions.resolve() : actions.reject();
     },
     async createOrder() {
+      const phone = deliveryPhone();
+      if (!phone) { errCode = 'PHONE_INVALID'; renderMsgs(); throw new Error('Delivery phone required'); }
       creating = true;
-      const body = { quantity: $('qty').value, promoCode: appliedPromo, lang: I18N.lang };
+      const body = { quantity: $('qty').value, promoCode: appliedPromo, lang: I18N.lang, deliveryPhone: phone };
       lockForm(true);
       try {
         const { ok, d } = await post('/api/checkout', body);

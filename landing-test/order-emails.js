@@ -13,7 +13,8 @@ function message(order, kind, baseUrl, { sandboxBuyerDirect = false } = {}) {
   const facts = [[zh ? '訂單編號' : 'Order reference', order.id], [zh ? '商品' : 'Product', 'WanWan Play · 36 cards / 36 張卡牌'],
     [zh ? '數量' : 'Quantity', order.qty], [zh ? '小計' : 'Subtotal', money(order.subtotalCents)], [zh ? '折扣' : 'Discount', money(order.discountCents)],
     [zh ? '優惠碼' : 'Promo code', order.promoCode || '—'], [zh ? '運費' : 'Shipping', money(order.shippingCents)], [zh ? '付款總額' : 'Total paid', money(order.totalCents)]];
-  if (team) facts.push(['Buyer email', customer.email || 'Not returned by PayPal'], ['Phone', customer.phone || 'Not returned by PayPal'], ['PayPal capture', order.paypalCaptureId || '—']);
+  if (customer.phone) facts.push([zh ? '配送聯絡電話' : 'Delivery contact phone', customer.phone]);
+  if (team) facts.push(['Buyer email', customer.email || 'Not returned by PayPal'], ['PayPal capture', order.paypalCaptureId || '—']);
   const attention = order.deliveryStatus === 'needs_attention' ? (zh ? '配送資料需要確認，請回覆此郵件與我們聯絡。' : 'Delivery details need review. Please reply to this email so we can confirm them before shipping.') : '';
   const footer = zh ? '如有任何問題，請回覆此郵件，並提供訂單編號。' : 'Questions? Reply to this email and include your order reference.';
   const link = team ? baseUrl + '/backoffice/' : '';

@@ -125,13 +125,16 @@ async function authorize(req, res) {
 app.post('/api/checkout', async (req, res) => {
   if (!CHECKOUT_READY) return res.status(503).json({ code: 'PAYMENT_UNAVAILABLE' });
   try {
+    const rawPhone = typeof req.body.deliveryPhone === 'string' ? req.body.deliveryPhone.trim() : '';
+    const deliveryPhone = rawPhone.replace(/[ ().-]/g, '');
+    if (rawPhone.length > 40 || !/^\+[1-9]\d{7,14}$/.test(deliveryPhone)) throw new ApiError('PHONE_INVALID');
     const totals = await computeTotals(req.body.quantity, req.body.promoCode);
     if (!Number.isSafeInteger(totals.totalCents) || totals.totalCents < 100) throw new Error('PRICE_INVALID');
     const checkoutToken = crypto.randomBytes(32).toString('hex');
     const order = { id: 'WW' + crypto.randomBytes(16).toString('hex').toUpperCase(),
       status: 'pending', provider: 'paypal', paypalEnv: paypal.env, lang: req.body.lang === 'en' ? 'en' : 'zh',
       notificationVersion: 1,
-      createdAt: new Date().toISOString(), ...totals, promoCode: totals.code, customer: {},
+      createdAt: new Date().toISOString(), ...totals, promoCode: totals.code, deliveryPhone, customer: { phone: deliveryPhone },
       deliveryStatus: 'awaiting_paypal',
       checkoutTokenHash: paypal.tokenHash(checkoutToken) };
     await db.saveOrder(order);

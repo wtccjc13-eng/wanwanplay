@@ -102,7 +102,7 @@ async function fixture(t, useRedis = false, overrides = {}) {
     async restart() { await instance.stop(); instance = await app(env); },
     failRedis() { failRedis = true; }, failCaptureResponse() { failCaptureResponse = true; },
     async create(body = shopper) {
-      const response = await post(instance.base, '/api/checkout', body); assert.equal(response.status, 200);
+      const response = await post(instance.base, '/api/checkout', { deliveryPhone: '+33123456789', ...body }); assert.equal(response.status, 200);
       const order = await response.json();
       // Simulate the buyer completing PayPal's own form, not data sent by our page.
       remote.get(order.paypalOrderId).purchase_units[0].shipping = {
@@ -228,7 +228,7 @@ test('quantity and promo remain authoritative; verified PayPal delivery details 
   const order = await f.create({ quantity: 3, promoCode: 'TEST10', totalCents: 1,
     name: 'Untrusted browser name', address: 'Ignore this address', country: 'US' });
   let saved = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[order.orderId];
-  assert.deepEqual(saved.customer, {}); assert.equal(saved.deliveryStatus, 'awaiting_paypal');
+  assert.deepEqual(saved.customer, { phone: '+33123456789' }); assert.equal(saved.deliveryStatus, 'awaiting_paypal');
   assert.equal(saved.qty, 3); assert.equal(saved.discountCents, 597); assert.equal(saved.totalCents, 5373);
   f.remote.get(order.paypalOrderId).status = 'APPROVED';
   assert.equal((await f.capture(order)).status, 200);
@@ -236,7 +236,7 @@ test('quantity and promo remain authoritative; verified PayPal delivery details 
   assert.equal(saved.customer.name, 'PayPal Recipient');
   assert.equal(saved.customer.address, '20 Confirmed Street\nApartment 4');
   assert.equal(saved.customer.email, 'recipient@example.invalid');
-  assert.equal(saved.customer.phone, '+33612345678');
+  assert.equal(saved.customer.phone, '+33123456789');
   assert.equal(saved.customer.state, 'Ile-de-France');
   assert.equal(saved.customerSource, 'paypal'); assert.equal(saved.deliveryStatus, 'ready');
   assert.equal(saved.status, 'paid'); assert.equal(saved.promoCode, 'TEST10');
@@ -248,6 +248,25 @@ test('quantity and promo remain authoritative; verified PayPal delivery details 
   assert.equal(backoffice.totalCents, 5373); assert.equal(backoffice.checkoutTokenHash, undefined);
 });
 
+test('delivery phone is mandatory before creating any local or PayPal order', async t => {
+  const f = await fixture(t);
+  for (const phone of [undefined, '', '0612345678', '+123', '+0123456789', '+1234567890123456', 33123456789, ['+33123456789'], '+33<script>12345678']) {
+    const response = await post(f.base, '/api/checkout', { quantity: 1, deliveryPhone: phone });
+    assert.equal(response.status, 400); assert.equal((await response.json()).code, 'PHONE_INVALID');
+  }
+  assert.equal(f.remote.size, 0);
+  await assert.rejects(fs.access(path.join(f.dir, 'orders.json')), { code: 'ENOENT' });
+});
+test('checkout phone survives PayPal overrides, webhooks and restarts on files and Redis', async t => {
+  for (const useRedis of [false, true]) {
+    const f = await fixture(t, useRedis), order = await f.create({ quantity: 2, deliveryPhone: ' +33 (7) 98-76-54-32 ' });
+    f.remote.get(order.paypalOrderId).status = 'APPROVED';
+    assert.equal((await f.webhook(order, 'CHECKOUT.ORDER.APPROVED')).status, 200);
+    await f.restart(); assert.equal((await f.webhook(order)).status, 200);
+    const saved = useRedis ? JSON.parse(f.values.get('order:' + order.orderId)) : JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[order.orderId];
+    assert.equal(saved.deliveryPhone, '+33798765432'); assert.equal(saved.customer.phone, saved.deliveryPhone); assert.equal(saved.status, 'paid');
+  }
+});
 test('shipping is EUR 3.90 for one deck and free for two or more; promos discount games only', async t => {
   const f = await fixture(t, false, { SINGLE_DECK_SHIPPING_EUR: '3.90', SHIPPING_EUR: '0' });
   for (const [quantity, promoCode, shippingCents, totalCents] of [
@@ -282,8 +301,11 @@ test('missing or unsupported PayPal delivery details prevent capture in browser 
   }
 });
 
-test('missing optional contact data does not invent details; contact fallback works for PayPal account responses', async t => {
+test('legacy PayPal contact fallback works; new orders preserve the delivery phone when PayPal omits it', async t => {
   const f = await fixture(t), order = await f.create({ quantity: 1 }), remote = f.remote.get(order.paypalOrderId);
+  const oldOrders = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'));
+  delete oldOrders[order.orderId].deliveryPhone; delete oldOrders[order.orderId].customer.phone;
+  await fs.writeFile(path.join(f.dir, 'orders.json'), JSON.stringify(oldOrders));
   const shipping = remote.purchase_units[0].shipping;
   delete shipping.email_address; delete shipping.phone_number;
   remote.payment_source.paypal.email_address = 'account@example.invalid';
@@ -296,7 +318,7 @@ test('missing optional contact data does not invent details; contact fallback wo
   delete other.purchase_units[0].shipping.email_address; delete other.purchase_units[0].shipping.phone_number;
   other.status = 'APPROVED'; assert.equal((await f.capture(guest)).status, 200);
   saved = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[guest.orderId];
-  assert.equal(saved.customer.email, ''); assert.equal(saved.customer.phone, '');
+  assert.equal(saved.customer.email, ''); assert.equal(saved.customer.phone, '+33123456789');
 });
 
 test('already captured money is recorded even if delivery details need manual review', async t => {
@@ -339,13 +361,13 @@ test('one-form browser flow validates promo, creates an order, captures PayPal d
   const elements = new Map();
   function element(id) {
     if (!elements.has(id)) elements.set(id, { value: '', hidden: false, disabled: false, textContent: '', listeners: {},
-      addEventListener(name, fn) { this.listeners[name] = fn; }, add() {}, querySelectorAll: () => [],
+      addEventListener(name, fn) { this.listeners[name] = fn; }, focus() {}, add() {}, querySelectorAll: () => [],
       querySelector: () => ({ setAttribute() {} }), classList: { toggle() {} }, setAttribute() {} });
     return elements.get(id);
   }
   const document = { getElementById: element, querySelector: selector => element(selector), querySelectorAll: () => [],
     addEventListener() {}, createElement: () => ({}), head: { appendChild(script) { queueMicrotask(() => script.onload()); } } };
-  const fields = { quantity: '1', promoCode: '' };
+  const fields = { quantity: '1', promoCode: '', deliveryPhone: '+33 7 12 34 56 78' };
   for (const [name, value] of Object.entries(fields)) element(name === 'quantity' ? 'qty' : name).value = String(value);
   const fieldElements = Object.keys(fields).map(name => element(name === 'quantity' ? 'qty' : name));
   element('form').querySelectorAll = () => fieldElements;
@@ -370,6 +392,9 @@ test('one-form browser flow validates promo, creates an order, captures PayPal d
   await settle(() => buttons && element('pay').hidden);
   let rejected = false, resolved = false;
   const actions = { reject() { rejected = true; }, resolve() { resolved = true; } };
+  element('deliveryPhone').value = ''; await buttons.onClick({}, actions); assert.equal(rejected, true); assert.equal(resolved, false);
+  element('deliveryPhone').value = '0712345678'; await assert.rejects(buttons.createOrder(), /Delivery phone required/);
+  element('deliveryPhone').value = fields.deliveryPhone; rejected = false;
   element('promo').value = 'UNKNOWN'; await buttons.onClick({}, actions); assert.equal(rejected, true);
   element('promo').value = ''; await buttons.onClick({}, actions); assert.equal(resolved, true);
   element('promo').value = 'TEST10'; await element('applyPromo').listeners.click();
@@ -383,6 +408,8 @@ test('one-form browser flow validates promo, creates an order, captures PayPal d
   await buttons.onApprove({ orderID: paypalOrderId });
   assert.match(ctx.location.href, /^\/success.html\?lang=en&order=WW/);
   const localId = new URL(ctx.location.href, f.base).searchParams.get('order');
+  const confirmed = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[localId];
+  assert.equal(confirmed.customer.phone, '+33712345678');
   assert.ok(memory.get('ww-order-' + localId));
 
   const success = await fs.readFile(path.join(root, 'public/success.html'), 'utf8');

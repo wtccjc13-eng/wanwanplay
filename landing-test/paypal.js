@@ -58,6 +58,9 @@ module.exports = function paypal(db) {
       // A capture retry may reuse the recipient verified before the initial charge.
       if (!required && !remote.purchase_units?.[0]?.shipping && local.deliveryStatus === 'ready') return;
       const customer = recipient(remote, local.customer || {});
+      // The required delivery contact entered on our checkout takes precedence
+      // over an optional PayPal account phone, including on webhook/retry paths.
+      if (local.deliveryPhone) customer.phone = local.deliveryPhone;
       const details = { customer, customerSource: 'paypal', deliveryStatus: 'ready', checkoutIssue: null };
       if (await db.updateDelivery(local.id, details) === -1) throw new Error('ORDER_UNKNOWN');
       Object.assign(local, details);
