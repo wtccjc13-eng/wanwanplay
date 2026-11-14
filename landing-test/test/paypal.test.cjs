@@ -21,7 +21,7 @@ async function app(env) {
     cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NODE_ENV: 'test', VERCEL: '',
       PRICE_EUR: '19.90', SHIPPING_EUR: '0', PAYPAL_ENV: 'sandbox',
       PAYPAL_CLIENT_ID: crypto.randomUUID(), PAYPAL_CLIENT_SECRET: crypto.randomUUID(),
-      PAYPAL_WEBHOOK_ID: 'test-webhook', PAYPAL_MERCHANT_ID: 'TESTMERCHANT',
+      PAYPAL_WEBHOOK_ID: 'test-webhook', PAYPAL_MERCHANT_ID: 'TESTMERCHANT', ADMIN_PASSWORD: 'test-only-order-backoffice-password',
       UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '', KV_REST_API_URL: '', KV_REST_API_TOKEN: '', ...env },
   });
   let output = '';
@@ -45,9 +45,10 @@ async function fixture(t, useRedis = false) {
       if (cmd === 'GET') return json(res, { result: values.get(args[0]) || null });
       if (cmd === 'SET') { values.set(args[0], args[1]); return json(res, { result: 'OK' }); }
       if (cmd === 'EVAL') {
-        if (failRedis) { failRedis = false; return json(res, { error: 'temporary failure' }, 500); }
+        if (failRedis && args[1] === 2) { failRedis = false; return json(res, { error: 'temporary failure' }, 500); }
         const [, count, key, ...rest] = args;
         const current = JSON.parse(values.get(key));
+        if (args[0].includes('local patch =')) { Object.assign(current, JSON.parse(rest[0])); values.set(key, JSON.stringify(current)); return json(res, { result: 1 }); }
         if (current.status === 'paid') return json(res, { result: 0 });
         if (count === 1) current.status = rest[0];
         else {
@@ -68,6 +69,8 @@ async function fixture(t, useRedis = false) {
     }
     if (req.url === '/v2/checkout/orders' && req.method === 'POST') {
       const body = JSON.parse(raw), id = 'PP' + crypto.randomBytes(8).toString('hex');
+      assert.equal(body.purchase_units[0].shipping, undefined);
+      assert.equal(body.payment_source.paypal.experience_context.shipping_preference, 'GET_FROM_FILE');
       const order = { ...body, id, status: 'CREATED' }; remote.set(id, order);
       return json(res, order, 201);
     }
@@ -100,7 +103,14 @@ async function fixture(t, useRedis = false) {
     failRedis() { failRedis = true; }, failCaptureResponse() { failCaptureResponse = true; },
     async create(body = shopper) {
       const response = await post(instance.base, '/api/checkout', body); assert.equal(response.status, 200);
-      return response.json();
+      const order = await response.json();
+      // Simulate the buyer completing PayPal's own form, not data sent by our page.
+      remote.get(order.paypalOrderId).purchase_units[0].shipping = {
+        name: { full_name: 'PayPal Recipient' },
+        address: { address_line_1: '20 Confirmed Street', address_line_2: 'Apartment 4', postal_code: '75002', admin_area_2: 'Paris', admin_area_1: 'Ile-de-France', country_code: 'FR' },
+        email_address: 'recipient@example.invalid', phone_number: { country_code: '33', national_number: '612345678' },
+      };
+      return order;
     },
     async capture(order, headers = auth(order)) { return post(instance.base, '/api/orders/' + order.orderId + '/capture', {}, headers); },
     async status(order) { return (await fetch(instance.base + '/api/orders/' + order.orderId, { headers: auth(order) })).json(); },
@@ -124,7 +134,7 @@ test('server totals, authorization, capture retries, duplicate webhooks and rest
   const config = await (await fetch(f.base + '/api/config')).json();
   assert.equal(config.checkoutReady, true); assert.equal(config.provider, 'paypal');
   assert.equal(JSON.stringify(config).includes('SECRET'), false);
-  assert.equal((await post(f.base, '/api/checkout', { ...shopper, country: 'XX' })).status, 400);
+  assert.equal((await post(f.base, '/api/checkout', { quantity: 1, promoCode: 'UNKNOWN' })).status, 400);
   const order = await f.create({ ...shopper, totalCents: 1 });
   const remote = f.remote.get(order.paypalOrderId);
   assert.equal(remote.purchase_units[0].amount.value, '17.91');
@@ -212,6 +222,84 @@ test('file journal recovers an interrupted payment and preserves legacy data', a
   await assert.rejects(db.saveOrder({ id: 'other' }), SyntaxError);
 });
 
+test('quantity and promo remain authoritative; verified PayPal delivery details appear in the backoffice', async t => {
+  const f = await fixture(t);
+  const order = await f.create({ quantity: 3, promoCode: 'TEST10', totalCents: 1,
+    name: 'Untrusted browser name', address: 'Ignore this address', country: 'US' });
+  let saved = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[order.orderId];
+  assert.deepEqual(saved.customer, {}); assert.equal(saved.deliveryStatus, 'awaiting_paypal');
+  assert.equal(saved.qty, 3); assert.equal(saved.discountCents, 597); assert.equal(saved.totalCents, 5373);
+  f.remote.get(order.paypalOrderId).status = 'APPROVED';
+  assert.equal((await f.capture(order)).status, 200);
+  saved = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[order.orderId];
+  assert.equal(saved.customer.name, 'PayPal Recipient');
+  assert.equal(saved.customer.address, '20 Confirmed Street\nApartment 4');
+  assert.equal(saved.customer.email, 'recipient@example.invalid');
+  assert.equal(saved.customer.phone, '+33612345678');
+  assert.equal(saved.customer.state, 'Ile-de-France');
+  assert.equal(saved.customerSource, 'paypal'); assert.equal(saved.deliveryStatus, 'ready');
+  assert.equal(saved.status, 'paid'); assert.equal(saved.promoCode, 'TEST10');
+  const login = await post(f.base, '/api/admin/login', { password: 'test-only-order-backoffice-password' }, { 'X-Admin-Request': '1' });
+  assert.equal(login.status, 200);
+  const response = await fetch(f.base + '/api/admin/orders/' + order.orderId, { headers: { Cookie: login.headers.get('set-cookie').split(';')[0] } });
+  const backoffice = await response.json();
+  assert.deepEqual(backoffice.customer, saved.customer);
+  assert.equal(backoffice.totalCents, 5373); assert.equal(backoffice.checkoutTokenHash, undefined);
+});
+
+test('missing or unsupported PayPal delivery details prevent capture in browser and approval webhook paths', async t => {
+  const f = await fixture(t);
+  for (const [change, code] of [
+    [unit => { delete unit.shipping; }, 'DELIVERY_MISSING'],
+    [unit => { unit.shipping.name.full_name = ''; }, 'DELIVERY_MISSING'],
+    [unit => { unit.shipping.address.postal_code = ''; }, 'DELIVERY_MISSING'],
+    [unit => { unit.shipping.address.country_code = 'US'; }, 'DELIVERY_COUNTRY'],
+  ]) {
+    const order = await f.create({ quantity: 1 }), remote = f.remote.get(order.paypalOrderId);
+    remote.status = 'APPROVED'; change(remote.purchase_units[0]);
+    const captured = await f.capture(order);
+    assert.equal(captured.status, 422); assert.equal((await captured.json()).code, code);
+    assert.equal((await f.webhook(order, 'CHECKOUT.ORDER.APPROVED')).status, 200);
+    assert.equal(f.calls.some(call => call.path === '/v2/checkout/orders/' + order.paypalOrderId + '/capture'), false);
+    const state = await f.status(order); assert.equal(state.status, 'pending'); assert.equal(state.checkoutIssue, code);
+  }
+});
+
+test('missing optional contact data does not invent details; contact fallback works for PayPal account responses', async t => {
+  const f = await fixture(t), order = await f.create({ quantity: 1 }), remote = f.remote.get(order.paypalOrderId);
+  const shipping = remote.purchase_units[0].shipping;
+  delete shipping.email_address; delete shipping.phone_number;
+  remote.payment_source.paypal.email_address = 'account@example.invalid';
+  remote.payer = { phone: { phone_number: { national_number: '+33123456789' } } };
+  remote.status = 'APPROVED';
+  assert.equal((await f.capture(order)).status, 200);
+  let saved = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[order.orderId];
+  assert.equal(saved.customer.email, 'account@example.invalid'); assert.equal(saved.customer.phone, '+33123456789');
+  const guest = await f.create({ quantity: 1 }), other = f.remote.get(guest.paypalOrderId);
+  delete other.purchase_units[0].shipping.email_address; delete other.purchase_units[0].shipping.phone_number;
+  other.status = 'APPROVED'; assert.equal((await f.capture(guest)).status, 200);
+  saved = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[guest.orderId];
+  assert.equal(saved.customer.email, ''); assert.equal(saved.customer.phone, '');
+});
+
+test('already captured money is recorded even if delivery details need manual review', async t => {
+  const f = await fixture(t), order = await f.create({ quantity: 1 }), remote = f.remote.get(order.paypalOrderId);
+  remote.status = 'COMPLETED'; delete remote.purchase_units[0].shipping;
+  remote.purchase_units[0].payments = { captures: [{ id: 'EXTERNAL-CAPTURE', status: 'COMPLETED', final_capture: true,
+    amount: { ...remote.purchase_units[0].amount } }] };
+  assert.equal((await f.webhook(order)).status, 200);
+  const state = await f.status(order);
+  assert.equal(state.status, 'paid'); assert.equal(state.deliveryStatus, 'needs_attention');
+  const login = await post(f.base, '/api/admin/login', { password: 'test-only-order-backoffice-password' }, { 'X-Admin-Request': '1' });
+  const csrf = (await login.json()).csrf;
+  const packed = await fetch(f.base + '/api/admin/orders/' + order.orderId, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Admin-Request': '1', 'X-CSRF-Token': csrf,
+      Cookie: login.headers.get('set-cookie').split(';')[0] },
+    body: JSON.stringify({ version: 0, fulfillment: 'packing', orderType: 'test', archived: false, carrier: '', trackingNumber: '', notes: '' }),
+  });
+  assert.equal(packed.status, 409);
+});
+
 test('incomplete PayPal configuration fails closed and all HTML scripts parse', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wanwan-config-'));
   t.after(() => fs.rmdir(dir));
@@ -228,7 +316,7 @@ test('incomplete PayPal configuration fails closed and all HTML scripts parse', 
   }
 });
 
-test('browser button flow validates fields, creates an order, captures and shows only server-confirmed payment', async t => {
+test('one-form browser flow validates promo, creates an order, captures PayPal delivery details and confirms payment', async t => {
   const f = await fixture(t), memory = new Map();
   const sessionStorage = { getItem: k => memory.get(k) || null, setItem: (k, v) => memory.set(k, v), removeItem: k => memory.delete(k) };
   const elements = new Map();
@@ -240,12 +328,12 @@ test('browser button flow validates fields, creates an order, captures and shows
   }
   const document = { getElementById: element, querySelector: selector => element(selector), querySelectorAll: () => [],
     addEventListener() {}, createElement: () => ({}), head: { appendChild(script) { queueMicrotask(() => script.onload()); } } };
-  const fields = { ...shopper }; delete fields.lang;
+  const fields = { quantity: '1', promoCode: '' };
   for (const [name, value] of Object.entries(fields)) element(name === 'quantity' ? 'qty' : name).value = String(value);
   const fieldElements = Object.keys(fields).map(name => element(name === 'quantity' ? 'qty' : name));
   element('form').querySelectorAll = () => fieldElements;
-  let valid = false, buttons;
-  element('form').reportValidity = () => valid;
+  let buttons;
+
   const ctx = {
     document, location: { href: '' }, sessionStorage, URLSearchParams, queueMicrotask,
     I18N: { lang: 'en', t: key => key, money: value => 'EUR' + value, apply() {} }, COUNTRIES: [],
@@ -265,11 +353,15 @@ test('browser button flow validates fields, creates an order, captures and shows
   await settle(() => buttons && element('pay').hidden);
   let rejected = false, resolved = false;
   const actions = { reject() { rejected = true; }, resolve() { resolved = true; } };
-  buttons.onClick({}, actions); assert.equal(rejected, true);
-  valid = true; buttons.onClick({}, actions); assert.equal(resolved, true);
+  element('promo').value = 'UNKNOWN'; await buttons.onClick({}, actions); assert.equal(rejected, true);
+  element('promo').value = ''; await buttons.onClick({}, actions); assert.equal(resolved, true);
   element('promo').value = 'TEST10'; await element('applyPromo').listeners.click();
   const paypalOrderId = await buttons.createOrder();
   assert.equal(fieldElements.every(el => el.disabled), true);
+  f.remote.get(paypalOrderId).purchase_units[0].shipping = {
+    name: { full_name: 'Browser PayPal Recipient' },
+    address: { address_line_1: '5 Confirmed Street', postal_code: '75001', admin_area_2: 'Paris', country_code: 'FR' },
+  };
   f.remote.get(paypalOrderId).status = 'APPROVED';
   await buttons.onApprove({ orderID: paypalOrderId });
   assert.match(ctx.location.href, /^\/success.html\?lang=en&order=WW/);

@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const { recipient, DeliveryError } = require('./recipient');
 
 const cents = value => {
   if (typeof value !== 'string' || !/^\d+\.\d{2}$/.test(value)) return NaN;
@@ -52,6 +53,20 @@ module.exports = function paypal(db) {
         cents(unit.amount?.value) !== local.totalCents) throw new Error('PAYMENT_MISMATCH');
     return unit;
   }
+  async function saveRecipient(remote, local, required) {
+    try {
+      // A capture retry may reuse the recipient verified before the initial charge.
+      if (!required && !remote.purchase_units?.[0]?.shipping && local.deliveryStatus === 'ready') return;
+      const customer = recipient(remote, local.customer || {});
+      const details = { customer, customerSource: 'paypal', deliveryStatus: 'ready', checkoutIssue: null };
+      if (await db.updateDelivery(local.id, details) === -1) throw new Error('ORDER_UNKNOWN');
+      Object.assign(local, details);
+    } catch (error) {
+      if (!(error instanceof DeliveryError)) throw error;
+      await db.updateDelivery(local.id, { deliveryStatus: 'needs_attention', checkoutIssue: error.code });
+      if (required) throw error;
+    }
+  }
   async function sync(remote, local) {
     const unit = validate(remote, local);
     const captures = unit.payments?.captures || [];
@@ -61,12 +76,16 @@ module.exports = function paypal(db) {
       if (remote.status !== 'COMPLETED' || !capture.id || capture.amount?.currency_code !== 'EUR' ||
           cents(capture.amount?.value) !== local.totalCents || capture.final_capture !== true)
         throw new Error('PAYMENT_MISMATCH');
+      // An externally completed capture is still a payment even if delivery needs review.
+      // Never hide a real charge or make the customer pay again to fix delivery details.
+      await saveRecipient(remote, local, false);
       const changed = await db.markPaid(local.id, capture.id);
       if (changed === -1) throw new Error('ORDER_UNKNOWN');
       if (changed === 1) console.log('[commande payée] ' + local.id + ' (PayPal)');
       return 'paid';
     }
     const status = ['DENIED', 'DECLINED', 'FAILED'].includes(capture?.status) || remote.status === 'VOIDED' ? 'failed' : 'pending';
+    if (unit.shipping) await saveRecipient(remote, local, false);
     await db.setPaymentStatus(local.id, status);
     return status;
   }
@@ -77,6 +96,7 @@ module.exports = function paypal(db) {
       let remote = await get(local.paypalOrderId);
       const unit = validate(remote, local);
       if (remote.status === 'APPROVED' && !unit.payments?.captures?.length) {
+        await saveRecipient(remote, local, true);
         await request('POST', '/v2/checkout/orders/' + encodeURIComponent(local.paypalOrderId) + '/capture', {}, local.id + '-capture');
         remote = await get(local.paypalOrderId);
       }
@@ -88,18 +108,15 @@ module.exports = function paypal(db) {
   return {
     ready, env: PAYPAL_ENV, clientId: PAYPAL_CLIENT_ID,
     async create(local, productName) {
-      const customer = local.customer;
       const remote = await request('POST', '/v2/checkout/orders', {
         intent: 'CAPTURE',
         purchase_units: [{ custom_id: local.id, invoice_id: local.id,
           description: (productName + ' ×' + local.qty).slice(0, 127),
           payee: { merchant_id: PAYPAL_MERCHANT_ID },
           amount: { currency_code: 'EUR', value: (local.totalCents / 100).toFixed(2) },
-          shipping: { name: { full_name: customer.name }, address: { address_line_1: customer.address,
-            admin_area_2: customer.city, postal_code: customer.zip, country_code: customer.country } },
         }],
         payment_source: { paypal: { experience_context: { brand_name: 'WanWan Play',
-          shipping_preference: 'SET_PROVIDED_ADDRESS', user_action: 'PAY_NOW' } } },
+          shipping_preference: 'GET_FROM_FILE', user_action: 'PAY_NOW' } } },
       }, local.id + '-create');
       if (!remote.id) throw new Error('PAYPAL_API');
       local.paypalOrderId = remote.id;
@@ -126,7 +143,10 @@ module.exports = function paypal(db) {
       const local = await db.getOrder(remote.purchase_units?.[0]?.custom_id);
       // This PayPal app may also serve other sites: acknowledge unrelated orders.
       if (!local) return true;
-      if (approved) await capture(local); else await sync(remote, local);
+      if (approved) {
+        try { await capture(local); }
+        catch (error) { if (!(error instanceof DeliveryError)) throw error; }
+      } else await sync(remote, local);
       return true;
     },
     tokenHash: value => crypto.createHash('sha256').update(value).digest('hex'),

@@ -66,11 +66,12 @@ module.exports = function admin(app, db, paymentEnv) {
     const customer = order.customer || {};
     return { id: order.id, status: order.status, provider: order.provider || 'unknown',
       paymentEnv: order.paypalEnv || 'unknown', createdAt: order.createdAt, paidAt: order.paidAt || null,
+      deliveryStatus: order.deliveryStatus || null, checkoutIssue: order.checkoutIssue || null,
       qty: order.qty, subtotalCents: order.subtotalCents, discountCents: order.discountCents,
       shippingCents: order.shippingCents, totalCents: order.totalCents, promoCode: order.promoCode || null,
       paypalOrderId: order.paypalOrderId || null, paypalCaptureId: order.paypalCaptureId || null,
       legacyPaymentId: order.airwallexIntentId || null,
-      customer: Object.fromEntries(['name', 'email', 'phone', 'address', 'zip', 'city', 'country'].map(key => [key, String(customer[key] || '')])),
+      customer: Object.fromEntries(['name', 'email', 'phone', 'address', 'zip', 'city', 'state', 'country'].map(key => [key, String(customer[key] || '')])),
       management: { ...defaults, ...management } };
   }
   async function allOrders(query) {
@@ -103,11 +104,11 @@ module.exports = function admin(app, db, paymentEnv) {
       return '"' + value.replace(/"/g, '""') + '"';
     };
     const header = ['Order', 'Created', 'Payment', 'Provider', 'Environment', 'Order type', 'Fulfillment', 'Archived', 'Quantity', 'Total EUR', 'Promo',
-      'Recipient', 'Email', 'Phone', 'Address', 'Postcode', 'City', 'Country', 'Carrier', 'Tracking', 'Notes', 'PayPal order', 'PayPal capture', 'Legacy payment'];
+      'Recipient', 'Email', 'Phone', 'Address', 'Postcode', 'City', 'State/region', 'Country', 'Carrier', 'Tracking', 'Notes', 'PayPal order', 'PayPal capture', 'Legacy payment', 'Delivery status'];
     const lines = orders.map(o => [o.id, o.createdAt, o.status, o.provider, o.paymentEnv, o.management.orderType,
       o.management.fulfillment, o.management.archived, o.qty, (o.totalCents / 100).toFixed(2), o.promoCode,
-      ...['name', 'email', 'phone', 'address', 'zip', 'city', 'country'].map(k => o.customer[k]),
-      o.management.carrier, o.management.trackingNumber, o.management.notes, o.paypalOrderId, o.paypalCaptureId, o.legacyPaymentId]);
+      ...['name', 'email', 'phone', 'address', 'zip', 'city', 'state', 'country'].map(k => o.customer[k]),
+      o.management.carrier, o.management.trackingNumber, o.management.notes, o.paypalOrderId, o.paypalCaptureId, o.legacyPaymentId, o.deliveryStatus]);
     res.type('text/csv').attachment('wanwan-orders.csv').send('\uFEFF' + [header, ...lines].map(row => row.map(cell).join(',')).join('\r\n'));
   }));
   router.get('/orders/:id', safe(async (req, res) => {
@@ -128,6 +129,8 @@ module.exports = function admin(app, db, paymentEnv) {
       return res.status(400).json({ error: 'Invalid order management fields.' });
     if (['packing', 'shipped'].includes(body.fulfillment) && order.status !== 'paid')
       return res.status(409).json({ error: 'Only confirmed paid orders can be packed or shipped.' });
+    if (['packing', 'shipped'].includes(body.fulfillment) && order.deliveryStatus === 'needs_attention')
+      return res.status(409).json({ error: 'PayPal delivery details need review before packing or shipping.' });
     const value = { ...body, version: body.version + 1, updatedAt: new Date().toISOString() };
     if (!await db.updateManagement(order.id, value, body.version))
       return res.status(409).json({ error: 'Another edit was saved. Reopen this order before editing again.' });

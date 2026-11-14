@@ -178,9 +178,9 @@
   .order-sec{background:var(--forest);scroll-margin-top:8px}
   .order-sec h2{color:#fff}
   .order-sec .lead{color:#e6f5ea}
-  .order{margin-top:22px;background:#fff;border:5px solid #fff;border-radius:22px;box-shadow:0 22px 50px rgba(0,0,0,.28);overflow:hidden}
+  .order{max-width:680px;margin:22px auto 0;background:#fff;border:5px solid #fff;border-radius:22px;box-shadow:0 22px 50px rgba(0,0,0,.28);overflow:hidden}
   .order > .bar{background:var(--ink);color:#fff;padding:12px 16px;font-family:var(--display);font-weight:var(--dw);font-size:1.05rem;display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .cols{display:grid;gap:22px;padding:6px 16px 22px;grid-template-columns:minmax(0,1fr)}
+  .cols{padding:6px 16px 22px}
   label{display:block;font-size:.92rem;font-weight:700;margin:14px 0 6px;color:var(--ink)}
   input,select{width:100%;min-height:var(--tap);padding:10px 14px;border:2px solid var(--line);border-radius:12px;font:500 16px/1.3 var(--body);background:#fff;color:var(--ink);appearance:none;-webkit-appearance:none}
   select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%2347665d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
@@ -197,7 +197,7 @@
   .msg{margin-top:10px;font-size:.92rem;font-weight:700} .msg.err{color:#c0392b} .msg.ok{color:var(--forest)}
   .secure{font-size:.82rem;color:var(--ink-soft);margin-top:14px;text-align:center;line-height:1.6}
   @media(min-width:600px){.order{border-width:7px;border-radius:26px;margin-top:30px}.order > .bar{padding:14px 24px;font-size:1.1rem}.cols{padding:10px 24px 30px;gap:28px}.summary{padding:20px}.row2{grid-template-columns:1fr 2fr}}
-  @media(min-width:800px){.cols{grid-template-columns:1.25fr 1fr}.summary{align-self:start;margin-top:14px}}
+  @media(min-width:800px){.summary{margin-top:14px}}
 
   /* ---- FAQ ---- */
   details{background:#fff;border:2px solid var(--line);border-radius:16px;padding:4px 16px;margin-bottom:10px}
@@ -356,29 +356,19 @@
     <div class="center"><h2 data-i18n="ord.h"></h2><p class="lead" data-i18n="ord.lead"></p></div>
     <div class="order">
       <div class="bar"><span data-i18n="ord.bar"></span><span class="tag t-ocean" data-i18n="ord.tag"></span></div>
-      <form id="form" class="cols" novalidate>
-        <div>
-          <label for="name" style="margin-top:0" data-i18n="f.name"></label><input id="name" name="name" autocomplete="name" enterkeyhint="next" required>
-          <label for="phone" data-i18n="f.phone"></label><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="next" placeholder="+33 6 12 34 56 78" required>
-          <label for="email" data-i18n="f.email"></label><input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" enterkeyhint="next" required>
-          <label for="address" data-i18n="f.address"></label><input id="address" name="address" autocomplete="street-address" enterkeyhint="next" required>
-          <div class="row2">
-            <div><label for="zip" data-i18n="f.zip"></label><input id="zip" name="zip" autocomplete="postal-code" autocapitalize="characters" enterkeyhint="next" required></div>
-            <div><label for="city" data-i18n="f.city"></label><input id="city" name="city" autocomplete="address-level2" enterkeyhint="done" required></div>
-          </div>
-          <label for="country" data-i18n="f.country"></label><select id="country" name="country" autocomplete="country" required></select>
-          <div class="shipnote" data-i18n="f.ship.note"></div>
-          <label for="promo" data-i18n="f.promo"></label>
-          <div class="promo"><input id="promo" name="promoCode" data-i18n-ph="f.promo.ph" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="done"><button type="button" id="applyPromo" data-i18n="f.apply"></button></div>
-          <div class="msg" id="promoMsg" role="status"></div>
-        </div>
+      <form id="form" class="cols">
         <div class="summary">
           <label for="qty" style="margin-top:0" data-i18n="f.qty"></label>
           <select id="qty" name="quantity"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+          <label for="promo" data-i18n="f.promo"></label>
+          <div class="promo"><input id="promo" name="promoCode" data-i18n-ph="f.promo.ph" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="done"><button type="button" id="applyPromo" data-i18n="f.apply"></button></div>
+          <div class="msg" id="promoMsg" role="status"></div>
           <div class="line" style="margin-top:16px"><span data-i18n="sum.sub"></span><span id="sub">—</span></div>
           <div class="line" id="discLine" hidden><span data-i18n="sum.disc"></span><span id="disc">—</span></div>
           <div class="line" id="shipLine" hidden><span data-i18n="sum.ship"></span><span id="ship">—</span></div>
           <div class="line total"><span data-i18n="sum.total"></span><span id="total">—</span></div>
+          <p class="shipnote" data-i18n="checkout.delivery"></p>
+          <div class="shipnote" data-i18n="f.ship.note"></div>
           <button class="btn" id="pay" type="submit" disabled style="width:100%;margin-top:18px" data-i18n="sum.pay"></button>
           <div id="paypal-buttons" style="margin-top:18px" hidden></div>
           <div class="msg err" id="err" role="alert"></div>
@@ -422,17 +412,10 @@ const t = (k) => I18N.t(k);
 let appliedPromo = '';
 let lastQuote = null;
 let cfg = { checkoutReady: false };
-let attempt = null, creating = false;
+let attempt = null, creating = false, preparing = false;
 
 let errCode = '', promoState = null;   // {kind:'ok'|'err', code?}
 
-function renderCountries() {
-  const sel = $('country'), cur = sel.value;
-  sel.innerHTML = '';
-  const ph = new Option(t('f.country.ph'), ''); ph.disabled = true; ph.selected = !cur; sel.add(ph);
-  COUNTRIES.forEach(([code, zh, en]) => sel.add(new Option(I18N.lang === 'en' ? en : zh, code)));
-  sel.value = cur || '';
-}
 function renderQuote() {
   const q = lastQuote; if (!q) return;
   $('sub').textContent = I18N.money(q.subtotalCents);
@@ -469,14 +452,17 @@ async function refreshNoPromo() {
 }
 
 $('qty').addEventListener('change', refresh);
-$('applyPromo').addEventListener('click', async () => {
+async function applyPromotion() {
   const code = $('promo').value.trim();
-  if (!code) { appliedPromo = ''; promoState = null; return refresh(); }
-  const {ok, d} = await post('/api/quote', {quantity: $('qty').value, promoCode: code});
-  if (!ok) { promoState = {kind:'err', code: d.code}; return renderMsgs(); }
-  appliedPromo = code; promoState = d.discountCents ? {kind:'ok'} : null;
-  lastQuote = d; renderQuote(); renderMsgs();
-});
+  const { ok, d } = await post('/api/quote', { quantity: $('qty').value, promoCode: code });
+  if (!ok) {
+    appliedPromo = ''; promoState = { kind: 'err', code: d.code || 'GENERIC' };
+    renderMsgs(); await refreshNoPromo(); return false;
+  }
+  appliedPromo = code; promoState = d.discountCents ? { kind: 'ok' } : null;
+  lastQuote = d; renderQuote(); renderMsgs(); return true;
+}
+$('applyPromo').addEventListener('click', () => applyPromotion().catch(() => { errCode = 'GENERIC'; renderMsgs(); }));
 
 $('form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -485,7 +471,7 @@ $('form').addEventListener('submit', (e) => {
 
 document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => I18N.set(b.dataset.lang)));
 document.addEventListener('langchange', () => {
-  renderCountries(); renderQuote(); renderMsgs(); renderBanner();
+  renderQuote(); renderMsgs(); renderBanner();
   document.title = t('meta.title');
   const alts = {en: ['Green sea turtle card','Taiwan barbet card','Formosan sika deer card','Formosan black bear card','Box of 灣灣好日子 Wildlife Edition','Formosan black bear, the game\'s mascot'],
                 zh: ['綠蠵龜卡片','五色鳥卡片','臺灣梅花鹿卡片','臺灣黑熊卡片','灣灣好日子 野生動物版 遊戲盒','臺灣黑熊，遊戲的吉祥物']}[I18N.lang];
@@ -510,16 +496,19 @@ async function setupPayPal() {
   $('paypal-buttons').hidden = false;
   await window.paypal.Buttons({
     style: { layout: 'vertical', label: 'pay' },
-    onClick(_data, actions) {
-      if (creating || attempt || !$('form').reportValidity()) return actions.reject();
+    async onClick(_data, actions) {
+      if (creating || preparing || attempt) return actions.reject();
       try { sessionStorage.setItem('ww-storage-check', '1'); sessionStorage.removeItem('ww-storage-check'); }
       catch { errCode = 'STORAGE_REQUIRED'; renderMsgs(); return actions.reject(); }
-      errCode = ''; renderMsgs(); return actions.resolve();
+      preparing = true; lockForm(true); let valid = false;
+      try { errCode = ''; valid = await applyPromotion(); }
+      catch { errCode = 'GENERIC'; renderMsgs(); }
+      finally { preparing = false; lockForm(false); }
+      return valid ? actions.resolve() : actions.reject();
     },
     async createOrder() {
       creating = true;
-      const body = Object.fromEntries(new FormData($('form')).entries());
-      body.promoCode = appliedPromo; body.lang = I18N.lang;
+      const body = { quantity: $('qty').value, promoCode: appliedPromo, lang: I18N.lang };
       lockForm(true);
       try {
         const { ok, d } = await post('/api/checkout', body);
@@ -534,11 +523,16 @@ async function setupPayPal() {
     },
     async onApprove(data) {
       if (!attempt || data.orderID !== attempt.paypalOrderId) { errCode = 'GENERIC'; renderMsgs(); return; }
-      // Keep the same order after any timeout; the status page safely retries capture.
+      // A delivery validation error occurs before capture; a timeout must retry the same order.
       try {
-        await fetch('/api/orders/' + attempt.orderId + '/capture', { method: 'POST',
+        const response = await fetch('/api/orders/' + attempt.orderId + '/capture', { method: 'POST',
           headers: { Authorization: 'Bearer ' + attempt.checkoutToken } });
-      } finally { statusPage(); }
+        if (response.status === 422) {
+          const result = await response.json();
+          attempt = null; lockForm(false); errCode = result.code || 'GENERIC'; renderMsgs(); return;
+        }
+        statusPage();
+      } catch { statusPage(); }
     },
     onCancel() {
       attempt = null; lockForm(false); errCode = 'PAYMENT_CANCELLED'; renderMsgs();

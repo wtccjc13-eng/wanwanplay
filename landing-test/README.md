@@ -10,10 +10,10 @@ Checkout stays closed with HTTP 503 PAYMENT_UNAVAILABLE until PAYPAL_ENV is sand
 
 ## Payment flow
 
-1. The browser validates the shipping form, then requests POST /api/checkout. The server validates fields, calculates quantity/price/discount and persists a pending order before creating the PayPal order.
+1. The single checkout form contains quantity and promo code above the PayPal buttons. The browser validates/applies the entered promo before opening PayPal. POST /api/checkout accepts only the quantity, promo and language; the server recalculates totals and persists a pending order with no recipient yet.
 2. The browser receives the PayPal order ID and an opaque per-order token. The token is stored in sessionStorage; only its hash is stored with the order. Browser storage is required for status access. No token is placed in URLs.
-3. The PayPal SDK displays eligible methods. Its onApprove callback calls POST /api/orders/:id/capture with the per-order bearer token. The server retrieves the order from PayPal, validates merchant, reference, currency and total, captures with a stable PayPal-Request-Id and retrieves it again.
-4. A completed capture with the exact EUR amount marks the order paid and increments its promo counter once. A pending or denied capture cannot be shown as paid. The status page reads GET /api/orders/:id; its retry button safely retries the same order after a timeout.
+3. The PayPal SDK displays eligible methods. Its onApprove callback calls POST /api/orders/:id/capture with the per-order bearer token. The server retrieves the order from PayPal, validates merchant, reference, currency and total, then requires a complete recipient name and supported European shipping address before capture. It saves those confirmed delivery details, captures with a stable PayPal-Request-Id and retrieves the order again.
+4. A completed capture with the exact EUR amount marks the order paid and increments its promo counter once. A pending or denied capture cannot be shown as paid. Missing delivery details or an unsupported country return a localized 422 error before capture. The buyer can restart checkout and select a valid address in PayPal. The status page reads GET /api/orders/:id; its retry button safely retries the same order after a timeout.
 5. POST /paypal/webhook verifies signatures through PayPal's verification API, retrieves authoritative order details and reconciles payment. CHECKOUT.ORDER.APPROVED also triggers capture if the browser closed after approval. Invalid signatures return 401; processing/storage errors return 500 so PayPal can retry.
 
 A success-page URL alone is never payment confirmation. Status endpoints return only the order reference, status and amount, and require the per-order token. Existing legacy orders and payment references remain untouched. No email sending or automatic fulfillment is implemented. Refunds and disputes are handled in the merchant dashboard; this version does not synchronize refund/dispute states.
@@ -56,3 +56,17 @@ Official references:
 - https://developer.paypal.com/studio/checkout/standard/integrate
 - https://developer.paypal.com/api/orders/v2
 - https://developer.paypal.com/api/webhooks/v1/verify-webhook-signature-post
+
+## PayPal-first recipient collection
+
+The old left-hand personal-details form is removed. PayPal is configured with GET_FROM_FILE so it collects/confirms the delivery address. The site explains that the parcel will go to that address. We do not treat a card billing address as the delivery address unless PayPal returns it as the confirmed shipping address.
+
+Only whitelisted fields from the authenticated PayPal order response are saved: recipient name, street/address lines, postcode, city, state/region, country, and available email/phone. Card details and complete raw PayPal responses are not stored. A customer object supplied by the browser is ignored. Contact fields prefer shipping contacts, then PayPal payer/account contacts. Email and phone may be absent; missing values stay blank rather than being invented. PayPal's Contact Module is documented as US-only, so the Taiwanese merchant integration does not depend on UPDATE_CONTACT_INFO.
+
+Complete name, street, city, postcode and a supported European country are mandatory before our capture call. These checks also apply to CHECKOUT.ORDER.APPROVED webhooks. Existing orders remain readable. New pending orders show Awaiting PayPal details until the buyer supplies them. Delivery updates patch the existing order atomically in Redis (or synchronously with file storage), preserving concurrent paid status and separate backoffice metadata.
+
+If PayPal has already completed a capture externally, the server records the financial truth even when delivery details are missing, flags deliveryStatus=needs_attention and blocks packing/shipping until reviewed. It does not hide a real charge or ask the buyer to pay again. The confirmation page reports that delivery needs review. A recipient verified immediately before our capture can be retained if the subsequent PayPal response omits shipping.
+
+After deploying, test BOTH a sandbox PayPal-account buyer and a guest card buyer on the actual Taiwanese merchant app. Confirm the exact returned name/address and available contacts in the backoffice, quantity/discount/total, cancellation, country rejection and webhook redelivery. Local fake API/SDK tests cannot establish which fields a real PayPal guest flow will return.
+
+Contact-module availability reference: https://developer.paypal.com/platforms/checkout/standard/customize/contact-module/

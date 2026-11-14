@@ -45,7 +45,7 @@ The extra Merchant ID check ensures the payment recipient matches the intended c
 1. Back up existing data (including payment-journal.json if present); keep the same storage location. File storage requires one Node.js process. Use Redis for multiple instances.
 2. Redeploy the latest feature branch in the existing app. Auto-deploy may already have started on push.
 3. Check /api/config for provider paypal, checkoutReady true and paypalEnv sandbox. No secret should appear. The site must show a sandbox banner and PayPal buttons. With any required setting missing, checkout must remain closed.
-4. In a real browser, try Chinese and English, mobile and desktop, valid/invalid shipping details, quantity changes, TEST10 and cancellation before approval. Use a sandbox buyer, never a real card in sandbox.
+4. In a real browser, try Chinese and English, mobile and desktop, quantity changes, TEST10 (including entering a code without clicking Apply), and cancellation before approval. Personal and delivery details are entered in PayPal, not on our page. Use a sandbox buyer, never a real card in sandbox.
 5. Complete a sandbox purchase. Check PayPal transaction details and the saved order's paid status, exact amount, Merchant ID and paypalCaptureId. Confirm the promo counter increased once, including after webhook redelivery and page refresh. Verify actual webhook delivery in PayPal's event dashboard. A simulator event is not a real purchase.
 6. Test a pending/failed payment where supported and retry after an interrupted browser connection. The status page must not claim paid until the server confirms capture. Preserve the same order when retrying.
 7. Confirm persisted orders and promo counters survive a redeploy. Check eligible guest-card checkout using your actual merchant account; do not promise cards, Apple Pay or Google Pay that PayPal does not display.
@@ -70,3 +70,15 @@ AIRWALLEX_* settings are unused and may be removed individually. The old webhook
 6. Refresh the page to confirm the saved changes remain. Use Export CSV to download all matching orders, including customer shipping details. Keep downloads private.
 
 The backoffice reads existing orders automatically; there is no JSON upload/import or manual file editing. Its private fulfillment/notes file is `order-management.json` inside DATA_DIR. For Redis, separate keys store management and shared sessions. Do not copy any of these files into the public website folder. See README.md for session expiry, login limits, backup and concurrency details.
+
+## Verify the simplified checkout
+
+No environment-variable change is required. Redeploy the latest feature branch and keep all payment, ADMIN_PASSWORD, DATA_DIR and Redis settings unchanged.
+
+The order section must show one centered form: Quantity, Promo code, totals and PayPal buttons. The old name/phone/email/address inputs must be absent. A promo typed immediately before clicking PayPal is validated and applied before creating the order. Prices are still recalculated on the server.
+
+Test a sandbox PayPal-account purchase AND guest-card purchase. Enter a supported European delivery address in PayPal. Check the backoffice for the same recipient, all address lines, postcode, city/region/country and any returned email/phone. Check quantity, promo, amount, paid status and capture ID in the same order. Email/phone availability can vary; there are no new mandatory contact fields on our page.
+
+Attempt an unsupported country or incomplete address and confirm that our server does not capture payment. Use a corrected address for a new attempt. If money was already captured outside our flow but delivery is incomplete, the order must remain visibly paid with Delivery needs review; packing/shipping are blocked. Do not manually change payment status or charge the customer again to fix delivery details.
+
+PayPal's Contact Module is currently documented as US-only; it is not used to promise editable contact capture for the Taiwanese account. Real sandbox flow verification remains necessary despite passing local fake-service tests.

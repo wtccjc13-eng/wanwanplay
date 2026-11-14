@@ -46,7 +46,8 @@ async function load() {
       const open = node('button', order.id.length > 22 ? order.id.slice(0, 10) + '…' + order.id.slice(-6) : order.id, 'row-open reference');
       open.title = order.id; open.addEventListener('click', () => openOrder(order.id));
       ref.append(open, node('small', date(order.createdAt)));
-      const customer = node('td'); customer.append(node('strong', order.customer.name || 'No recipient'), node('small', [order.customer.city, order.customer.country].filter(Boolean).join(' · ')));
+      const customer = node('td'); customer.append(node('strong', order.customer.name || 'Awaiting PayPal details'), node('small', [order.customer.city, order.customer.country].filter(Boolean).join(' · ')));
+      if (order.deliveryStatus === 'needs_attention') customer.append(badge('Delivery needs review', 'failed'));
       const payment = node('td'); payment.append(badge(label(order.status), order.status), node('small', order.provider + ' · ' + (order.paymentEnv === 'unknown' ? 'Environment unknown' : order.paymentEnv)));
       if (order.management.orderType !== 'unknown') payment.append(node('small', label(order.management.orderType)));
       const amount = node('td'); amount.append(node('strong', money(order.totalCents)), node('small', order.qty + ' item' + (order.qty === 1 ? '' : 's')));
@@ -73,9 +74,10 @@ async function openOrder(id) {
     current = order;
     $('detail-title').textContent = 'A little adventure, ready?'; $('detail-reference').textContent = order.id;
     $('detail-badges').replaceChildren(badge(label(order.status), order.status), badge(order.provider), badge(order.paymentEnv === 'unknown' ? 'Environment unknown' : order.paymentEnv));
+    if (order.deliveryStatus === 'needs_attention') $('detail-badges').append(badge('Delivery needs review', 'failed'));
     const customer = order.customer;
-    $('recipient-name').textContent = customer.name;
-    $('recipient-address').textContent = [customer.address, [customer.zip, customer.city].filter(Boolean).join(' '), customer.country].filter(Boolean).join('\n');
+    $('recipient-name').textContent = customer.name || 'Awaiting PayPal details';
+    $('recipient-address').textContent = [customer.address, [customer.zip, customer.city].filter(Boolean).join(' '), customer.state, customer.country].filter(Boolean).join('\n');
     $('recipient-contact').replaceChildren(node('p', [customer.email, customer.phone].filter(Boolean).join(' · ')));
     $('order-facts').replaceChildren();
     const facts = { Created: date(order.createdAt), 'Paid at': date(order.paidAt), Quantity: order.qty,
@@ -85,7 +87,7 @@ async function openOrder(id) {
     for (const [key, value] of Object.entries(facts)) $('order-facts').append(node('dt', key), node('dd', String(value)));
     const meta = order.management;
     $('edit-fulfillment').value = meta.fulfillment; $('edit-type').value = meta.orderType;
-    for (const option of $('edit-fulfillment').options) option.disabled = order.status !== 'paid' && ['packing', 'shipped'].includes(option.value);
+    for (const option of $('edit-fulfillment').options) option.disabled = (order.status !== 'paid' || order.deliveryStatus === 'needs_attention') && ['packing', 'shipped'].includes(option.value);
     $('edit-carrier').value = meta.carrier; $('edit-tracking').value = meta.trackingNumber;
     $('edit-notes').value = meta.notes; $('edit-archived').checked = meta.archived;
     $('save-message').textContent = ''; $('message').textContent = '';

@@ -93,6 +93,21 @@ module.exports = function storage(dataDir, redis) {
       if (redis) return redis('SET', 'order:' + order.id, JSON.stringify(order));
       recover(); const orders = read('orders.json'); orders[order.id] = order; write('orders.json', orders);
     },
+    async updateDelivery(id, details) {
+      // Patch only delivery fields; a concurrent capture must never revert paid status.
+      if (redis) return redis('EVAL', `
+        local raw = redis.call('GET', KEYS[1])
+        if not raw then return -1 end
+        local current = cjson.decode(raw)
+        local patch = cjson.decode(ARGV[1])
+        for key, value in pairs(patch) do current[key] = value end
+        redis.call('SET', KEYS[1], cjson.encode(current))
+        return 1
+      `, 1, 'order:' + id, JSON.stringify(details));
+      recover(); const orders = read('orders.json');
+      if (!orders[id]) throw new Error('ORDER_UNKNOWN');
+      Object.assign(orders[id], details); write('orders.json', orders); return 1;
+    },
     async promoUses(code) {
       if (redis) return Number(await redis('GET', 'promo:' + code)) || 0;
       recover(); return read('promo-uses.json')[code] || 0;

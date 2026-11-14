@@ -45,7 +45,7 @@ const DATA_DIR = process.env.DATA_DIR
 const db = require('./storage')(DATA_DIR, USE_REDIS ? redis : null);
 const paypal = require('./paypal')(db);
 const CHECKOUT_READY = paypal.ready && !(process.env.VERCEL && !USE_REDIS);
-const COUNTRIES = ['FR','BE','CH','LU','DE','NL','IT','ES','PT','GB','IE','AT','DK','SE','FI','NO','PL','CZ','SK','HU','SI','HR','RO','BG','GR','CY','MT','EE','LV','LT'];
+const { DeliveryError } = require('./recipient');
 const loadPromos = () => JSON.parse(fs.readFileSync(path.join(__dirname, 'promo-codes.json'), 'utf8'));
 
 // Erreur à code stable : le navigateur traduit le message selon la langue
@@ -104,6 +104,7 @@ app.post('/api/quote', async (req, res) => {
 
 function errorResponse(res, error) {
   if (error instanceof ApiError) return res.status(400).json({ code: error.code });
+  if (error instanceof DeliveryError) return res.status(422).json({ code: error.code });
   // Never log upstream responses, credentials or customer data.
   console.error('[paiement erreur]', ['PAYMENT_MISMATCH', 'PAYPAL_API', 'PAYPAL_AUTH'].includes(error.message) ? error.message : 'INTERNAL');
   res.status(502).json({ code: 'GENERIC' });
@@ -121,22 +122,13 @@ async function authorize(req, res) {
 app.post('/api/checkout', async (req, res) => {
   if (!CHECKOUT_READY) return res.status(503).json({ code: 'PAYMENT_UNAVAILABLE' });
   try {
-    const customer = {};
-    for (const [key, limit] of Object.entries({ name: 120, phone: 20, email: 254, address: 300, zip: 10, city: 120, country: 2 })) {
-      const value = req.body[key];
-      if (typeof value !== 'string' || !value.trim() || value.trim().length > limit) throw new ApiError('FIELDS_MISSING');
-      customer[key] = value.trim();
-    }
-    if (!COUNTRIES.includes(customer.country)) throw new ApiError('COUNTRY_INVALID');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(customer.email)) throw new ApiError('EMAIL_INVALID');
-    if (!/^[0-9+\-\s().]{8,20}$/.test(customer.phone)) throw new ApiError('PHONE_INVALID');
-    if (!/^[A-Za-z0-9][A-Za-z0-9 \-]{1,9}$/.test(customer.zip)) throw new ApiError('ZIP_INVALID');
     const totals = await computeTotals(req.body.quantity, req.body.promoCode);
     if (!Number.isSafeInteger(totals.totalCents) || totals.totalCents < 100) throw new Error('PRICE_INVALID');
     const checkoutToken = crypto.randomBytes(32).toString('hex');
     const order = { id: 'WW' + crypto.randomBytes(16).toString('hex').toUpperCase(),
       status: 'pending', provider: 'paypal', paypalEnv: paypal.env, lang: req.body.lang === 'en' ? 'en' : 'zh',
-      createdAt: new Date().toISOString(), ...totals, promoCode: totals.code, customer,
+      createdAt: new Date().toISOString(), ...totals, promoCode: totals.code, customer: {},
+      deliveryStatus: 'awaiting_paypal',
       checkoutTokenHash: paypal.tokenHash(checkoutToken) };
     await db.saveOrder(order);
     const paypalOrderId = await paypal.create(order, PRODUCT_NAME);
@@ -147,7 +139,8 @@ app.post('/api/checkout', async (req, res) => {
 app.get('/api/orders/:id', async (req, res) => {
   try {
     const order = await authorize(req, res); if (!order) return;
-    res.json({ orderId: order.id, status: order.status, totalCents: order.totalCents });
+    res.json({ orderId: order.id, status: order.status, totalCents: order.totalCents,
+      deliveryStatus: order.deliveryStatus || null, checkoutIssue: order.checkoutIssue || null });
   } catch (e) { errorResponse(res, e); }
 });
 app.post('/api/orders/:id/capture', async (req, res) => {
