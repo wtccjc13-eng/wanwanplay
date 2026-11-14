@@ -14,6 +14,8 @@
       <p id="login-error" role="alert" class="error"></p><small>Your customer and payment information stays private.</small>
     </section>
     <section id="workspace" hidden>
+      <nav class="workspace-nav" aria-label="Backoffice sections"><button id="tab-orders" aria-pressed="true">Orders</button><button id="tab-promos" aria-pressed="false">Promo codes</button></nav>
+      <div id="orders-panel">
       <div class="page-heading"><div><span class="eyebrow">THE WANWAN WORKROOM</span><h1>Orders<span class="dot">.</span></h1><p>From a new adventure to a parcel on its way.</p></div><div class="actions"><button id="refresh">↻ Refresh</button><button id="export">Export CSV ↗</button></div></div>
       <div id="environment" class="notice"></div>
       <section class="stats" aria-label="Order summary"><article><span>Paid orders</span><strong id="stat-paid">—</strong><small>Payment confirmed</small></article><article><span>To prepare</span><strong id="stat-prepare">—</strong><small>Paid &amp; unfulfilled</small></article><article><span>Pending attempts</span><strong id="stat-pending">—</strong><small>Payment not confirmed</small></article><article><span>Paid total</span><strong id="stat-total">—</strong><small>Includes test / unclassified orders</small></article></section>
@@ -29,6 +31,17 @@
       <div class="table-wrap"><table><thead><tr><th>Order / date</th><th>Recipient</th><th>Payment</th><th>Total</th><th>Fulfillment</th><th></th></tr></thead><tbody id="orders"></tbody></table><div id="empty" class="empty" hidden><span>↗</span><h3>A clear desk.</h3><p>No orders match these filters. Try “All payments” to see pending attempts.</p></div></div>
       <div class="pagination"><span id="result-count"></span><div><button id="previous">← Previous</button><span id="page-number"></span><button id="next">Next →</button></div></div>
       <p class="footnote">Payment status comes from the checkout. Packing, notes and tracking are managed separately. Archiving never deletes an order or refunds a payment.</p>
+      </div>
+      <div id="promos-panel" hidden>
+        <div class="page-heading"><div><span class="eyebrow">A LITTLE BOOST FOR YOUR NEXT ADVENTURE</span><h1>Promo codes<span class="dot">.</span></h1><p>Edit in Google Sheets. Review here. Make it live.</p></div><button id="promo-fetch" class="primary" disabled>Update from Google Sheets →</button></div>
+        <p id="promo-status" class="notice" role="status">Loading promo codes…</p>
+        <section class="promo-connection"><div><h2>Your private Google Sheet</h2><p>Connect once, then import whenever you are ready. Changes go live only after you review and apply them.</p><a href="/backoffice/promo-template.csv" download>Download the sheet template ↗</a></div><form id="promo-source-form"><label>Google Sheet link or ID<input id="promo-sheet" required maxlength="250" placeholder="https://docs.google.com/spreadsheets/d/…"></label><label>Worksheet tab name<input id="promo-tab" required maxlength="80" value="Promos"></label><button id="promo-save-source">Save connection</button></form><p id="promo-setup" class="footnote"></p></section>
+        <p id="promo-message" role="status" class="message"></p><ul id="promo-errors" class="error" role="alert"></ul>
+        <div class="list-heading"><h2>Current codes</h2><span id="promo-count"></span></div>
+        <label class="promo-search">Find a code or partner<input id="promo-search" type="search" maxlength="100" placeholder="Code or partner name…"></label>
+        <div class="table-wrap"><table><thead><tr><th>Code / partner</th><th>Discount</th><th>Paid uses / limit</th><th>Expires (UTC)</th><th>Status</th></tr></thead><tbody id="promo-codes"></tbody></table></div>
+        <p class="footnote">Paid-use counts and historical orders are preserved. Codes missing from the sheet are disabled on import. An empty or invalid sheet leaves the current list unchanged. Existing checkout attempts keep their original quoted amount.</p>
+      </div>
     </section>
   </main>
   <dialog id="detail" aria-labelledby="detail-title">
@@ -44,5 +57,11 @@
       <p class="footnote">These changes do not charge, cancel or refund a payment, and do not notify the customer.</p>
       <p id="save-message" role="status" class="message"></p><button id="save-order" class="primary">Save changes</button>
     </form>
+  </dialog>
+  <dialog id="promo-preview" aria-labelledby="promo-preview-title">
+    <div class="detail-header"><div><span class="eyebrow">REVIEW BEFORE PUBLISHING</span><h2 id="promo-preview-title">Your next promotions.</h2></div><button id="promo-close-preview" aria-label="Close promo preview">✕</button></div>
+    <p id="promo-preview-summary"></p><p class="footnote">This snapshot expires after 15 minutes. Applying updates the checkout immediately. Codes missing from the sheet are disabled; paid-use counts stay intact.</p>
+    <div class="table-wrap"><table><thead><tr><th>Code / change</th><th>Before</th><th>After</th><th>Paid uses</th></tr></thead><tbody id="promo-preview-rows"></tbody></table></div>
+    <p id="promo-apply-message" class="message" role="status"></p><div class="promo-preview-actions"><button id="promo-cancel-preview">Cancel</button><button id="promo-apply" class="primary">Apply changes to checkout</button></div>
   </dialog>
 </body></html>

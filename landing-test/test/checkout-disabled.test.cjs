@@ -68,7 +68,7 @@ test('Redis promo counters remain supported and are only read', async t => {
   const redis = http.createServer(async (req, res) => {
     let raw = ''; for await (const part of req) raw += part;
     const command = JSON.parse(raw); commands.push(command);
-    res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ result: '100' }));
+    res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ result: command[1] === 'promo:TEST10' ? '100' : null }));
   });
   redis.listen(0, '127.0.0.1'); await once(redis, 'listening');
   t.after(() => new Promise(resolve => { redis.close(resolve); redis.closeAllConnections(); }));
@@ -77,7 +77,7 @@ test('Redis promo counters remain supported and are only read', async t => {
   const quote = await post(app.base, '/api/quote', { quantity: 1, promoCode: 'TEST10' });
   assert.equal((await quote.json()).code, 'PROMO_EXHAUSTED');
   assert.equal((await post(app.base, '/api/checkout')).status, 503);
-  assert.deepEqual(commands, [['GET', 'promo:TEST10']]);
+  assert.deepEqual(commands, [['GET', 'wanwan:promos:state'], ['GET', 'promo:TEST10']]);
 });
 
 test('unusable file storage still prevents startup', async () => {

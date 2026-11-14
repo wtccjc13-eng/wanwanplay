@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('node:crypto');
@@ -47,7 +46,7 @@ const db = require('./storage')(DATA_DIR, USE_REDIS ? redis : null);
 const paypal = require('./paypal')(db);
 const CHECKOUT_READY = paypal.ready && !(process.env.VERCEL && !USE_REDIS);
 const { DeliveryError } = require('./recipient');
-const loadPromos = () => JSON.parse(fs.readFileSync(path.join(__dirname, 'promo-codes.json'), 'utf8'));
+const promos = require('./promos')(db);
 
 // Erreur à code stable : le navigateur traduit le message selon la langue
 class ApiError extends Error {
@@ -58,9 +57,9 @@ class ApiError extends Error {
 async function promoDiscount(rawCode, subtotalCents) {
   const code = String(rawCode || '').trim().toUpperCase();
   if (!code) return { code: null, discountCents: 0 };
-  const promo = loadPromos().find((p) => p.code.toUpperCase() === code);
-  if (!promo) throw new ApiError('PROMO_UNKNOWN');
-  if (promo.expires && new Date(promo.expires + 'T23:59:59') < new Date()) throw new ApiError('PROMO_EXPIRED');
+  const promo = (await promos.codes()).find((p) => p.code.toUpperCase() === code);
+  if (!promo || promo.active === false) throw new ApiError('PROMO_UNKNOWN');
+  if (promo.expires && new Date(promo.expires + 'T23:59:59.999Z') < new Date()) throw new ApiError('PROMO_EXPIRED');
   if (promo.maxUses && (await db.promoUses(promo.code)) >= promo.maxUses) throw new ApiError('PROMO_EXHAUSTED');
   let discountCents = 0;
   if (promo.type === 'percent') discountCents = Math.round((subtotalCents * promo.value) / 100);
@@ -88,7 +87,7 @@ app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); nex
 app.use(express.json({ limit: '128kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
-require('./admin')(app, db, paypal.env);
+require('./admin')(app, db, paypal.env, promos);
 
 app.get('/api/config', (_req, res) => {
   res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, freeShippingMinQty: 2, simulation: false, provider: CHECKOUT_READY ? 'paypal' : 'none', checkoutReady: CHECKOUT_READY, paypalEnv: paypal.env, paypalClientId: CHECKOUT_READY ? paypal.clientId : null });

@@ -90,3 +90,11 @@ Deploy the same feature branch and keep the existing storage, payment and admin 
 New orders charge EUR 3.90 shipping for one deck and zero shipping for at least two decks ordered together. This is calculated on the server, after promo discounts on the games only. SINGLE_DECK_SHIPPING_EUR controls the one-deck fee (default 3.90). The previous flat SHIPPING_EUR variable is retired and ignored, including any old value 0; it can be removed later without replacing unrelated environment variables. No new setting is required for the confirmed EUR 3.90 policy. Existing orders retain their original amounts.
 
 After deployment, check one deck (EUR 23.80), one deck with TEST10 (EUR 21.81), and two decks with TEST10 (EUR 35.82, free shipping) at the default product price. Confirm the PayPal amount and saved shippingCents match the displayed quote. Verify the Legal & Terms and Contact links in both store languages. The owner retained draft return conditions for separate legal review. Buyer/merchant notification emails remain for the next implementation step.
+
+## Private Google Sheets promo imports
+
+Deploy the feature branch with npm ci (adds google-auth-library). In /backoffice/ → Promo codes, save a private Google Sheet link and tab name, fetch a preview, then apply. Checkout codes change immediately after Apply; redeployment is not needed for later sheet edits.
+
+To enable fetching, configure GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY privately in Hostinger environment variables, restart, enable Google Sheets API and share the sheet with that account as Viewer. Never paste the JSON key into GitHub or chat. Read GOOGLE-SHEETS-PROMOS.md for the template and full instructions. Existing codes remain viewable before Google is configured.
+
+Keep DATA_DIR unchanged. Back up promo-state.json and promo-config.json with existing data while the single-process file-backed app is stopped. Short-lived promo-previews.json need not be restored. Redis remains optional; existing paid-use counters and order records are preserved. Verify one preview/apply against the real private sheet after configuring access; automated tests use a fake sheet.

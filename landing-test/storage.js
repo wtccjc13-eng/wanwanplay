@@ -32,6 +32,66 @@ module.exports = function storage(dataDir, redis) {
     recover();
   }
   return {
+    async getPromoState() {
+      if (!redis) return read('promo-state.json', null);
+      const raw = await redis('GET', 'wanwan:promos:state'); return raw ? JSON.parse(raw) : null;
+    },
+    async getPromoConfig() {
+      if (!redis) return read('promo-config.json', null);
+      const raw = await redis('GET', 'wanwan:promos:config'); return raw ? JSON.parse(raw) : null;
+    },
+    async savePromoConfig(value, revision) {
+      if (redis) return redis('EVAL', `
+        local raw = redis.call('GET', KEYS[1])
+        local current = raw and cjson.decode(raw) or {revision=0}
+        if current.revision ~= tonumber(ARGV[1]) then return 0 end
+        redis.call('SET', KEYS[1], ARGV[2])
+        return 1
+      `, 1, 'wanwan:promos:config', String(revision), JSON.stringify(value));
+      if ((read('promo-config.json', null)?.revision || 0) !== revision) return 0;
+      write('promo-config.json', value); return 1;
+    },
+    async savePromoState(value, revision, configRevision) {
+      if (redis) return redis('EVAL', `
+        local raw = redis.call('GET', KEYS[1])
+        local current = raw and cjson.decode(raw) or {revision=0}
+        local source = redis.call('GET', KEYS[2])
+        local config = source and cjson.decode(source) or {revision=0}
+        if current.revision ~= tonumber(ARGV[1]) or config.revision ~= tonumber(ARGV[2]) then return 0 end
+        redis.call('SET', KEYS[1], ARGV[3])
+        return 1
+      `, 2, 'wanwan:promos:state', 'wanwan:promos:config', String(revision), String(configRevision), JSON.stringify(value));
+      if ((read('promo-state.json', null)?.revision || 0) !== revision ||
+          (read('promo-config.json', null)?.revision || 0) !== configRevision) return 0;
+      write('promo-state.json', value); return 1;
+    },
+    async promoCounts(codes) {
+      const result = {};
+      const count = raw => { const n = Number(raw ?? 0); if (!Number.isSafeInteger(n) || n < 0) throw new Error('Invalid promo counter'); return n; };
+      if (!redis) {
+        recover(); const uses = read('promo-uses.json');
+        for (const code of codes) Object.defineProperty(result, code, { value: count(uses[code]), enumerable: true });
+      } else for (let i = 0; i < codes.length; i += 100) {
+        const batch = codes.slice(i, i + 100), values = await redis('MGET', ...batch.map(code => 'promo:' + code));
+        batch.forEach((code, index) => Object.defineProperty(result, code, { value: count(values[index]), enumerable: true }));
+      }
+      return result;
+    },
+    async getPromoPreview(hash) {
+      if (!redis) return read('promo-previews.json')[hash] || null;
+      const raw = await redis('GET', 'wanwan:promo-preview:' + hash); return raw ? JSON.parse(raw) : null;
+    },
+    async savePromoPreview(hash, value) {
+      if (redis) return redis('SET', 'wanwan:promo-preview:' + hash, JSON.stringify(value), 'EX', 900);
+      const previews = read('promo-previews.json');
+      for (const [key, preview] of Object.entries(previews)) if (preview.expires <= Date.now()) delete previews[key];
+      while (Object.keys(previews).length >= 10) delete previews[Object.keys(previews)[0]];
+      previews[hash] = value; write('promo-previews.json', previews);
+    },
+    async deletePromoPreview(hash) {
+      if (redis) return redis('DEL', 'wanwan:promo-preview:' + hash);
+      const previews = read('promo-previews.json'); delete previews[hash]; write('promo-previews.json', previews);
+    },
     async listOrders() {
       if (!redis) { recover(); return Object.values(read('orders.json')); }
       const keys = new Set();

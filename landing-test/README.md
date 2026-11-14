@@ -22,7 +22,9 @@ A success-page URL alone is never payment confirmation. Status endpoints return 
 
 PRICE_EUR defaults to 19.90. SINGLE_DECK_SHIPPING_EUR defaults to 3.90; shipping is free for two or more decks in the same order. The old flat SHIPPING_EUR setting is no longer used, so a legacy SHIPPING_EUR=0 cannot silently override the new quantity-based policy. Prices must be valid non-negative EUR amounts (product at least EUR 1). PRODUCT_NAME controls the product label. POST /api/quote previews prices without creating orders or consuming promotions.
 
-promo-codes.json supports percent, amount_eur, maxUses and expires. Promo usage increments once on confirmed payment. maxUses is checked when creating an order, without reserving capacity for pending payments; simultaneous pending checkouts can exceed that limit. It is not a hard stock/quota mechanism.
+The backoffice **Promo codes** section imports from a private Google Sheet: save the connection, **Update from Google Sheets**, review, then **Apply changes to checkout**. Changes apply immediately without redeployment. Invalid/unavailable sheets leave the active list unchanged. Missing codes are disabled and paid-use counts preserved. See [GOOGLE-SHEETS-PROMOS.md](GOOGLE-SHEETS-PROMOS.md) for the template, service-account setup, backups and recovery.
+
+Before the first applied import, promo-codes.json supplies the seed list; thereafter persistent storage takes precedence. Expiry dates end at 23:59:59.999 UTC. Promo usage increments once on confirmed payment. maxUses is checked when creating an order, without reserving capacity for pending payments; simultaneous pending checkouts can exceed that limit. It is not a hard stock/quota mechanism.
 
 ## Storage
 

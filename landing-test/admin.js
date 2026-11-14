@@ -6,7 +6,7 @@ const same = (a, b) => crypto.timingSafeEqual(Buffer.from(hash(a)), Buffer.from(
 const validId = id => /^WW[A-Z0-9]{1,64}$/.test(id);
 const defaults = { fulfillment: 'unfulfilled', carrier: '', trackingNumber: '', notes: '', archived: false, orderType: 'unknown', version: 0 };
 
-module.exports = function admin(app, db, paymentEnv) {
+module.exports = function admin(app, db, paymentEnv, promos) {
   const password = process.env.ADMIN_PASSWORD || '';
   const enabled = password.length >= 16;
   const cookieName = 'ww_admin';
@@ -62,6 +62,28 @@ module.exports = function admin(app, db, paymentEnv) {
   router.post('/logout', safe(async (req, res) => {
     await db.deleteAdminSession(req.adminSessionHash); res.clearCookie(cookieName, cookieOptions); res.json({ ok: true });
   }));
+  router.get('/promos', safe(async (_req, res) => res.json(await promos.overview())));
+  // Only explicit validation/setup errors may leave this boundary. Storage and
+  // upstream failures can include credentials or paths, so keep them generic.
+  const promoAction = (action, status = 400) => safe(async (req, res) => {
+    try { res.json(await action(req)); }
+    catch (error) {
+      if (error.publicMessage) return res.status(status).json({ error: error.publicMessage });
+      throw error;
+    }
+  });
+  router.put('/promos/config', promoAction(req => promos.saveConfig(req.body)));
+  router.post('/promos/preview', safe(async (req, res) => {
+    try {
+      const result = await promos.preview(req.adminSessionHash);
+      if (result.errors) return res.status(422).json({ error: 'The sheet has errors. Active codes are unchanged.', errors: result.errors });
+      res.json(result);
+    } catch (error) {
+      if (error.publicMessage) return res.status(400).json({ error: error.publicMessage });
+      throw error;
+    }
+  }));
+  router.post('/promos/apply', promoAction(req => promos.apply(req.body.token, req.adminSessionHash), 409));
   function present(order, management) {
     const customer = order.customer || {};
     return { id: order.id, status: order.status, provider: order.provider || 'unknown',

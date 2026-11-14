@@ -1,0 +1,3 @@
+code,type,value,max_uses,expires,active,partner
+WANWAN10,percent,10,100,2027-12-31,TRUE,WanWan
+CREATOR5,amount_eur,5,50,2027-12-31,FALSE,Creator name
