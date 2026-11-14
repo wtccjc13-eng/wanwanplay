@@ -81,7 +81,7 @@
       'about.lead': '《灣灣好日子》由台灣公司方元創意有限公司（Fangyuan Creative）出品，團隊位於台北。我們想讓孩子從海洋到高山，重新發現身邊的奇妙自然。',
       'about.1': '全部內容為繁體中文，小檔案附注音，孩子可以自己讀',
       'about.2': '2–6 人、約 20 分鐘，不需要螢幕，親子、手足、同學都能一起玩',
-      'about.3': '[ 36 ] 張動物卡牌，涵蓋海洋、森林、草原、高山 4 大棲地',
+      'about.3': '36 張動物卡牌，涵蓋海洋、森林、草原、高山 4 大棲地',
       'about.4': '5 歲以上都能玩，最適合 5 至 14 歲的孩子',
 
       'ord.h': '立即訂購',
@@ -92,7 +92,7 @@
       'f.address': '地址（街道與門牌號碼）', 'f.zip': '郵遞區號', 'f.city': '城市', 'f.country': '國家', 'f.country.ph': '請選擇',
       'f.promo': '優惠碼', 'f.promo.ph': '例如 TEST10', 'f.apply': '套用',
       'f.qty': '數量',
-      'f.ship.note': '目前配送歐洲地區（歐盟、瑞士、英國、挪威）。',
+      'f.ship.note': '配送歐洲地區（歐盟、瑞士、英國、挪威）。同筆訂單購買兩副以上免運；一副的運費為 {shipping}。',
       'sum.sub': '小計', 'sum.disc': '折扣', 'sum.ship': '運費', 'sum.total': '總計',
       'sum.pay': '暫時無法付款',
       'sum.secure': '線上付款暫停中，目前無法送出訂單或付款。',
@@ -111,13 +111,12 @@
       'faq.h': '常見問題',
       'faq.1.q': '適合幾歲的孩子？', 'faq.1.a': '5 歲以上都能玩，最適合 5 至 14 歲的孩子，大人一起玩也很有趣。內含小卡片，不適合 3 歲以下幼兒。',
       'faq.2.q': '還不太會認字，也能玩嗎？', 'faq.2.a': '可以。比大小只要認得數字就能玩；小檔案附有注音，也可以請大人陪著一起讀。',
-      'faq.3.q': '多久會收到商品？', 'faq.3.a': '付款完成後約 [ 待補 ] 個工作天寄達歐洲各地。請保留訂單編號。',
+      'faq.3.q': '多久會收到商品？', 'faq.3.a': '預估配送時間為 2–4 天，從法國出貨。請保留訂單編號。',
       'faq.4.q': '付款方式與幣別？', 'faq.4.a': '網站以歐元（€）標價。結帳開放時透過 PayPal 付款，實際可用方式依 PayPal 顯示為準。',
       'faq.5.q': '優惠碼怎麼使用？', 'faq.5.a': '在訂購區輸入優惠碼，按「套用」，折扣就會顯示在總計裡。',
 
       'foot.main': '© 2026 WanWan Play 灣灣・方元創意有限公司（Fangyuan Creative）',
-      'foot.privacy': '隱私權政策', 'foot.terms': '服務條款', 'foot.contact': '聯絡我們',
-      'foot.todo': '[ 待補：統一編號、公司地址、客服信箱、歐盟 14 天猶豫期（退貨）與增值稅（VAT）說明 ]',
+      'foot.legal': '法律與條款', 'foot.contact': '聯絡我們',
 
       'ok.t': '無法確認付款狀態', 'ok.d': '此頁面不代表付款成功，目前線上結帳暫停。', 'ok.ref': '訂單編號：', 'ok.back': '回到首頁',
       'ko.t': '付款尚未完成', 'ko.d': '目前線上結帳暫停。此頁面無法確認付款狀態。', 'ko.back': '回到訂購頁'
@@ -202,7 +201,7 @@
       'about.lead': '灣灣好日子 is published by Fangyuan Creative (方元創意有限公司), a Taiwanese company based in Taipei. We want kids to rediscover the wonders of nature around them, from the sea to the high mountains.',
       'about.1': 'All content is in Traditional Chinese, with zhuyin on the profiles so kids can read on their own',
       'about.2': '2–6 players, about 20 minutes, no screens: great for parents, siblings and classmates',
-      'about.3': '[ 36 ] animal cards across 4 habitats: ocean, forest, grassland and mountain',
+      'about.3': '36 animal cards across 4 habitats: ocean, forest, grassland and mountain',
       'about.4': 'Ages 5 and up, best for kids aged 5 to 14',
 
       'ord.h': 'Order now',
@@ -213,7 +212,7 @@
       'f.address': 'Address (street and number)', 'f.zip': 'Postal code', 'f.city': 'City', 'f.country': 'Country', 'f.country.ph': 'Select',
       'f.promo': 'Promo code', 'f.promo.ph': 'e.g. TEST10', 'f.apply': 'Apply',
       'f.qty': 'Quantity',
-      'f.ship.note': 'Delivery to Europe: EU, Switzerland, UK and Norway.',
+      'f.ship.note': 'Delivery to Europe: EU, Switzerland, UK and Norway. Free shipping for 2 or more decks in one order; {shipping} for one deck.',
       'sum.sub': 'Subtotal', 'sum.disc': 'Discount', 'sum.ship': 'Shipping', 'sum.total': 'Total',
       'sum.pay': 'Checkout temporarily unavailable',
       'sum.secure': 'Online payment is temporarily unavailable. No orders or payments can be submitted.',
@@ -232,13 +231,12 @@
       'faq.h': 'FAQ',
       'faq.1.q': 'What age is it for?', 'faq.1.a': 'Anyone aged 5 and up can play; it works best for kids aged 5 to 14, and adults enjoy it too. It contains small cards and is not suitable for children under 3.',
       'faq.2.q': 'Can kids who can\'t read much yet play?', 'faq.2.a': 'Yes. Comparing numbers is enough to play, and the profiles come with zhuyin, so a grown-up can read along.',
-      'faq.3.q': 'When will I receive my order?', 'faq.3.a': 'About [ TBD ] business days after payment, by home delivery. Please keep your order reference.',
+      'faq.3.q': 'When will I receive my order?', 'faq.3.a': 'Estimated delivery is 2–4 days, shipped from France. Please keep your order reference.',
       'faq.4.q': 'Which currency and payment methods?', 'faq.4.a': 'Prices are in euros (€). When checkout is available, payments are processed by PayPal using the eligible methods shown at checkout.',
       'faq.5.q': 'How do I use a promo code?', 'faq.5.a': 'Enter it in the order section and press "Apply". The discount appears in your total.',
 
       'foot.main': '© 2026 WanWan Play 灣灣 · Fangyuan Creative (方元創意有限公司)',
-      'foot.privacy': 'Privacy policy', 'foot.terms': 'Terms', 'foot.contact': 'Contact',
-      'foot.todo': '[ TBD: company tax ID (統一編號), address, support email, EU 14-day withdrawal right and VAT information ]',
+      'foot.legal': 'Legal & Terms', 'foot.contact': 'Contact',
 
       'ok.t': 'Payment status unavailable', 'ok.d': 'This page does not confirm a payment. Online checkout is currently unavailable.', 'ok.ref': 'Order: ', 'ok.back': 'Back to home',
       'ko.t': 'Payment not completed', 'ko.d': 'Online checkout is currently unavailable. This page does not confirm payment status.', 'ko.back': 'Back to order'

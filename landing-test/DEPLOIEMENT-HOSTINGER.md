@@ -82,3 +82,11 @@ Test a sandbox PayPal-account purchase AND guest-card purchase. Enter a supporte
 Attempt an unsupported country or incomplete address and confirm that our server does not capture payment. Use a corrected address for a new attempt. If money was already captured outside our flow but delivery is incomplete, the order must remain visibly paid with Delivery needs review; packing/shipping are blocked. Do not manually change payment status or charge the customer again to fix delivery details.
 
 PayPal's Contact Module is currently documented as US-only; it is not used to promise editable contact capture for the Taiwanese account. Real sandbox flow verification remains necessary despite passing local fake-service tests.
+
+## Legal page and quantity-based shipping
+
+Deploy the same feature branch and keep the existing storage, payment and admin settings. Legal & Terms is at /legal.html. The old footer TBD row is removed. The legal text is English; returning to the store preserves its selected language.
+
+New orders charge EUR 3.90 shipping for one deck and zero shipping for at least two decks ordered together. This is calculated on the server, after promo discounts on the games only. SINGLE_DECK_SHIPPING_EUR controls the one-deck fee (default 3.90). The previous flat SHIPPING_EUR variable is retired and ignored, including any old value 0; it can be removed later without replacing unrelated environment variables. No new setting is required for the confirmed EUR 3.90 policy. Existing orders retain their original amounts.
+
+After deployment, check one deck (EUR 23.80), one deck with TEST10 (EUR 21.81), and two decks with TEST10 (EUR 35.82, free shipping) at the default product price. Confirm the PayPal amount and saved shippingCents match the displayed quote. Verify the Legal & Terms and Contact links in both store languages. The owner retained draft return conditions for separate legal review. Buyer/merchant notification emails remain for the next implementation step.

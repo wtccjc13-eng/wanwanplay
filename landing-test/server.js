@@ -10,12 +10,13 @@ const {
   BASE_URL = 'http://localhost:3000',
   PRODUCT_NAME = '灣灣好日子 野生動物版',
   PRICE_EUR = '19.90',
-  SHIPPING_EUR = '0',
+  SINGLE_DECK_SHIPPING_EUR = '3.90',
 } = process.env;
 
 // Prices and promotion totals are always calculated on the server.
 const PRICE_CENTS = Math.round(parseFloat(PRICE_EUR) * 100);       // prix unitaire affiché, en centimes d'euro
-const SHIPPING_CENTS = Math.round(parseFloat(SHIPPING_EUR) * 100);  // frais de port par commande, en centimes
+// The quantity-based policy replaces legacy flat SHIPPING_EUR settings (often 0).
+const SHIPPING_CENTS = Math.round(parseFloat(SINGLE_DECK_SHIPPING_EUR) * 100);
 if (!Number.isSafeInteger(PRICE_CENTS) || PRICE_CENTS < 100 ||
     !Number.isSafeInteger(SHIPPING_CENTS) || SHIPPING_CENTS < 0) throw new Error('Invalid product pricing');
 // ---------- Stockage ----------
@@ -72,8 +73,9 @@ async function computeTotals(quantity, promoCode) {
   const qty = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 10);
   const subtotalCents = PRICE_CENTS * qty;
   const { code, discountCents } = await promoDiscount(promoCode, subtotalCents);
-  const totalCents = subtotalCents - discountCents + SHIPPING_CENTS;
-  return { qty, code, subtotalCents, discountCents, shippingCents: SHIPPING_CENTS, totalCents };
+  const shippingCents = qty >= 2 ? 0 : SHIPPING_CENTS;
+  const totalCents = subtotalCents - discountCents + shippingCents;
+  return { qty, code, subtotalCents, discountCents, shippingCents, totalCents };
 }
 
 // ---------- App ----------
@@ -89,7 +91,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 require('./admin')(app, db, paypal.env);
 
 app.get('/api/config', (_req, res) => {
-  res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, simulation: false, provider: CHECKOUT_READY ? 'paypal' : 'none', checkoutReady: CHECKOUT_READY, paypalEnv: paypal.env, paypalClientId: CHECKOUT_READY ? paypal.clientId : null });
+  res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, freeShippingMinQty: 2, simulation: false, provider: CHECKOUT_READY ? 'paypal' : 'none', checkoutReady: CHECKOUT_READY, paypalEnv: paypal.env, paypalClientId: CHECKOUT_READY ? paypal.clientId : null });
 });
 
 app.post('/api/quote', async (req, res) => {

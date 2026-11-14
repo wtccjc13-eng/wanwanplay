@@ -394,9 +394,8 @@
 <footer>
   <div class="wrap">
     <span data-i18n="foot.main"></span> ·
-    <a href="#" data-i18n="foot.privacy"></a> · <a href="#" data-i18n="foot.terms"></a> · <a href="#" data-i18n="foot.contact"></a>
+    <a id="legalLink" href="/legal.html" data-i18n="foot.legal"></a> · <a href="mailto:play@wanwanplay.com" data-i18n="foot.contact"></a>
     <div class="pub">www.wanwanplay.com</div>
-    <div class="pub" data-i18n="foot.todo"></div>
   </div>
 </footer>
 
@@ -437,6 +436,7 @@ function renderBanner() {
   b.hidden = cfg.checkoutReady && cfg.paypalEnv === 'live';
   b.textContent = t(cfg.checkoutReady ? 'banner.paypalSandbox' : 'banner.unavailable');
   document.querySelector('[data-i18n="sum.secure"]').textContent = t(cfg.checkoutReady ? 'paypal.secure' : 'sum.secure');
+  document.querySelector('[data-i18n="f.ship.note"]').textContent = t('f.ship.note').replace('{shipping}', I18N.money(cfg.shippingCents ?? 390));
 }
 const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(async r => ({ok: r.ok, d: await r.json()}));
 
@@ -472,6 +472,7 @@ $('form').addEventListener('submit', (e) => {
 document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => I18N.set(b.dataset.lang)));
 document.addEventListener('langchange', () => {
   renderQuote(); renderMsgs(); renderBanner();
+  $('legalLink').href = '/legal.html?lang=' + I18N.lang;
   document.title = t('meta.title');
   const alts = {en: ['Green sea turtle card','Taiwan barbet card','Formosan sika deer card','Formosan black bear card','Box of 灣灣好日子 Wildlife Edition','Formosan black bear, the game\'s mascot'],
                 zh: ['綠蠵龜卡片','五色鳥卡片','臺灣梅花鹿卡片','臺灣黑熊卡片','灣灣好日子 野生動物版 遊戲盒','臺灣黑熊，遊戲的吉祥物']}[I18N.lang];

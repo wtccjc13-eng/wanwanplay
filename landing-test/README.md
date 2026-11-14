@@ -20,7 +20,7 @@ A success-page URL alone is never payment confirmation. Status endpoints return 
 
 ## Product and promotions
 
-PRICE_EUR defaults to 19.90 and SHIPPING_EUR to 0. Prices must be valid non-negative EUR amounts (product at least EUR 1). PRODUCT_NAME controls the product label. POST /api/quote previews prices without creating orders or consuming promotions.
+PRICE_EUR defaults to 19.90. SINGLE_DECK_SHIPPING_EUR defaults to 3.90; shipping is free for two or more decks in the same order. The old flat SHIPPING_EUR setting is no longer used, so a legacy SHIPPING_EUR=0 cannot silently override the new quantity-based policy. Prices must be valid non-negative EUR amounts (product at least EUR 1). PRODUCT_NAME controls the product label. POST /api/quote previews prices without creating orders or consuming promotions.
 
 promo-codes.json supports percent, amount_eur, maxUses and expires. Promo usage increments once on confirmed payment. maxUses is checked when creating an order, without reserving capacity for pending payments; simultaneous pending checkouts can exceed that limit. It is not a hard stock/quota mechanism.
 
@@ -70,3 +70,9 @@ If PayPal has already completed a capture externally, the server records the fin
 After deploying, test BOTH a sandbox PayPal-account buyer and a guest card buyer on the actual Taiwanese merchant app. Confirm the exact returned name/address and available contacts in the backoffice, quantity/discount/total, cancellation, country rejection and webhook redelivery. Local fake API/SDK tests cannot establish which fields a real PayPal guest flow will return.
 
 Contact-module availability reference: https://developer.paypal.com/platforms/checkout/standard/customize/contact-module/
+
+## Legal page and footer
+
+The footer links to /legal.html under Legal & Terms (法律與條款 in Chinese). The source legal content was supplied in English in Legal Notes (website).docx. Company ID/address/contact are taken from that document. The owner confirmed 36 cards, EUR 3.90 shipping for one deck, free shipping for two or more, and Apple Pay/Google Pay availability within PayPal where offered. The legal page retains the supplied unused/fully-packaged return condition and 14-day damaged-item reporting clauses at the owner's explicit request for separate legal review; this work is not legal validation of those clauses.
+
+Internal draft instructions and unsupported claims about automatic confirmation/tracking emails were omitted. Email notifications are explicitly deferred to the next task; no email-sending code is added. The legal page uses current server pricing when available and falls back to the supplied EUR 19.90 / EUR 3.90 defaults on static hosting. Contact links use play@wanwanplay.com.

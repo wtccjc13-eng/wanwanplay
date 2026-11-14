@@ -19,7 +19,7 @@ const auth = order => ({ Authorization: 'Bearer ' + order.checkoutToken });
 async function app(env) {
   const child = spawn(process.execPath, ['-e', "const app=require('./server');const s=app.listen(0,'127.0.0.1',()=>console.log('READY:'+s.address().port));"], {
     cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NODE_ENV: 'test', VERCEL: '',
-      PRICE_EUR: '19.90', SHIPPING_EUR: '0', PAYPAL_ENV: 'sandbox',
+      PRICE_EUR: '19.90', SINGLE_DECK_SHIPPING_EUR: '0', PAYPAL_ENV: 'sandbox',
       PAYPAL_CLIENT_ID: crypto.randomUUID(), PAYPAL_CLIENT_SECRET: crypto.randomUUID(),
       PAYPAL_WEBHOOK_ID: 'test-webhook', PAYPAL_MERCHANT_ID: 'TESTMERCHANT', ADMIN_PASSWORD: 'test-only-order-backoffice-password',
       UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '', KV_REST_API_URL: '', KV_REST_API_TOKEN: '', ...env },
@@ -33,7 +33,7 @@ async function app(env) {
   return { base, stop: async () => { if (child.exitCode !== null || child.signalCode !== null) return;
     const done = once(child, 'exit'); child.kill(); await done; } };
 }
-async function fixture(t, useRedis = false) {
+async function fixture(t, useRedis = false, overrides = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wanwan-paypal-'));
   const remote = new Map(), values = new Map(), calls = [];
   let failRedis = false, failCaptureResponse = false;
@@ -89,7 +89,7 @@ async function fixture(t, useRedis = false) {
   const base = 'http://127.0.0.1:' + server.address().port;
   const env = { DATA_DIR: dir, PAYPAL_TEST_API_BASE: base, ...(useRedis ? {
     UPSTASH_REDIS_REST_URL: base + '/redis', UPSTASH_REDIS_REST_TOKEN: 'fake-test-redis',
-  } : {}) };
+  } : {}), ...overrides };
   let instance = await app(env);
   t.after(async () => {
     await instance.stop();
@@ -247,6 +247,22 @@ test('quantity and promo remain authoritative; verified PayPal delivery details 
   assert.equal(backoffice.totalCents, 5373); assert.equal(backoffice.checkoutTokenHash, undefined);
 });
 
+test('shipping is EUR 3.90 for one deck and free for two or more; promos discount games only', async t => {
+  const f = await fixture(t, false, { SINGLE_DECK_SHIPPING_EUR: '3.90', SHIPPING_EUR: '0' });
+  for (const [quantity, promoCode, shippingCents, totalCents] of [
+    [1, '', 390, 2380], [1, 'TEST10', 390, 2181], [2, '', 0, 3980], [2, 'TEST10', 0, 3582], [3, 'TEST10', 0, 5373],
+  ]) {
+    const quote = await (await post(f.base, '/api/quote', { quantity, promoCode })).json();
+    assert.equal(quote.shippingCents, shippingCents); assert.equal(quote.totalCents, totalCents);
+  }
+  const order = await f.create({ quantity: 1, promoCode: 'TEST10' });
+  const remote = f.remote.get(order.paypalOrderId);
+  assert.equal(remote.purchase_units[0].amount.value, '21.81');
+  remote.status = 'APPROVED'; assert.equal((await f.capture(order)).status, 200);
+  const saved = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'))[order.orderId];
+  assert.equal(saved.shippingCents, 390); assert.equal(saved.totalCents, 2181); assert.equal(saved.status, 'paid');
+});
+
 test('missing or unsupported PayPal delivery details prevent capture in browser and approval webhook paths', async t => {
   const f = await fixture(t);
   for (const [change, code] of [
@@ -310,7 +326,7 @@ test('incomplete PayPal configuration fails closed and all HTML scripts parse', 
       assert.equal((await post(instance.base, '/api/checkout', shopper)).status, 503);
     } finally { await instance.stop(); }
   }
-  for (const file of ['index.html', 'success.html', 'cancel.html']) {
+  for (const file of ['index.html', 'success.html', 'cancel.html', 'legal.html']) {
     const html = await fs.readFile(path.join(root, 'public', file), 'utf8');
     for (const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
   }
