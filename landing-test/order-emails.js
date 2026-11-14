@@ -3,7 +3,7 @@ const crypto = require('node:crypto');
 const validEmail = value => typeof value === 'string' && value.length <= 254 && /^[A-Za-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}$/.test(value);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const money = cents => '€' + (Number(cents || 0) / 100).toFixed(2);
-function message(order, kind, baseUrl) {
+function message(order, kind, baseUrl, { sandboxBuyerDirect = false } = {}) {
   const zh = kind === 'buyer' && order.lang === 'zh', team = kind === 'team';
   const customer = order.customer || {}, sandbox = order.paypalEnv === 'sandbox';
   const subject = (sandbox ? '[SANDBOX TEST] ' : '') + (team ? 'New paid order · ' : zh ? '灣灣好日子｜訂單付款確認 ' : 'WanWan Play · Order confirmed ') + order.id;
@@ -17,10 +17,11 @@ function message(order, kind, baseUrl) {
   const attention = order.deliveryStatus === 'needs_attention' ? (zh ? '配送資料需要確認，請回覆此郵件與我們聯絡。' : 'Delivery details need review. Please reply to this email so we can confirm them before shipping.') : '';
   const footer = zh ? '如有任何問題，請回覆此郵件，並提供訂單編號。' : 'Questions? Reply to this email and include your order reference.';
   const link = team ? baseUrl + '/backoffice/' : '';
-  const text = [sandbox ? 'SANDBOX TEST — no live purchase. Buyer confirmation is redirected to the team mailbox.' : '', heading, intro,
+  const sandboxNote = sandbox ? 'SANDBOX TEST — no live purchase.' + (sandboxBuyerDirect ? '' : ' Buyer confirmation is redirected to the team mailbox.') : '';
+  const text = [sandboxNote, heading, intro,
     ...facts.map(([key, value]) => key + ': ' + value), zh ? '配送地址：' : 'Delivery address:', address || 'Requires review', attention, link, footer].filter(Boolean).join('\n\n');
   const html = '<!doctype html><html lang="' + (zh ? 'zh-Hant' : 'en') + '"><body style="margin:0;background:#f7f8f2;color:#233d34;font-family:Arial,sans-serif"><main style="max-width:600px;margin:24px auto;background:white;border-radius:16px;padding:32px">' +
-    '<p style="color:#245e47;font-weight:bold">WANWAN PLAY · 灣灣好日子</p>' + (sandbox ? '<p><strong>SANDBOX TEST — no live purchase. Buyer email redirected to team.</strong></p>' : '') +
+    '<p style="color:#245e47;font-weight:bold">WANWAN PLAY · 灣灣好日子</p>' + (sandbox ? '<p><strong>' + escape(sandboxNote) + '</strong></p>' : '') +
     '<h1 style="font-size:28px">' + escape(heading) + '</h1><p>' + escape(intro) + '</p><table style="width:100%;border-collapse:collapse">' +
     facts.map(([key, value]) => '<tr><th style="padding:10px 0;text-align:left;font-weight:normal;border-bottom:1px solid #e0e7de">' + escape(key) + '</th><td style="padding:10px;text-align:right;border-bottom:1px solid #e0e7de">' + escape(value) + '</td></tr>').join('') +
     '</table><h2 style="font-size:18px">' + (zh ? '配送地址' : 'Delivery address') + '</h2><p style="white-space:pre-line">' + escape(address || 'Requires review') + '</p>' +
@@ -35,6 +36,8 @@ module.exports = function orderEmails(db, { env = process.env, createTransport =
   const ready = enabled && validEmail(from) && validEmail(team) && !!env.SMTP_HOST && [465, 587].includes(port) &&
     validEmail(env.SMTP_USER) && !!env.SMTP_PASSWORD && !!baseUrl;
   const sandboxEnabled = env.MAIL_SANDBOX_ENABLED === 'true';
+  const sandboxBuyerDirect = env.MAIL_SANDBOX_BUYER_ENABLED === 'true';
+  const buyerUsesCustomerEmail = order => order.paypalEnv === 'live' || order.paypalEnv === 'sandbox' && sandboxBuyerDirect;
   let transport, timer, running = false;
   const eligible = order => order.status === 'paid' && order.notificationVersion === 1 && order.provider === 'paypal' && ['live', 'sandbox'].includes(order.paypalEnv);
   const allowed = order => eligible(order) && (order.paypalEnv === 'live' || sandboxEnabled);
@@ -46,7 +49,7 @@ module.exports = function orderEmails(db, { env = process.env, createTransport =
       const records = await db.getNotifications(orders.map(order => order.id));
       for (const order of orders) {
         for (const kind of ['buyer', 'team']) {
-          const to = kind === 'buyer' && order.paypalEnv === 'live' ? order.customer?.email : team;
+          const to = kind === 'buyer' && buyerUsesCustomerEmail(order) ? order.customer?.email : team;
           if (!validEmail(to)) continue;
           const key = order.id + ':' + kind, token = crypto.randomUUID(), record = records[key];
           if (record && (['sent', 'uncertain'].includes(record.status) || record.status === 'sending' && record.leaseUntil > now() ||
@@ -58,7 +61,7 @@ module.exports = function orderEmails(db, { env = process.env, createTransport =
               auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD }, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000,
               logger: false, debug: false, disableFileAccess: true, disableUrlAccess: true });
             const info = await transport.sendMail({ from: { name: 'WanWan Play', address: from }, replyTo: { address: from }, to: { address: to },
-              messageId: '<' + order.id + '.' + kind + '@' + from.split('@')[1] + '>', ...message(order, kind, baseUrl) });
+              messageId: '<' + order.id + '.' + kind + '@' + from.split('@')[1] + '>', ...message(order, kind, baseUrl, { sandboxBuyerDirect }) });
             if (!info.accepted?.some(address => String(address).toLowerCase() === to.toLowerCase())) {
               patch = { status: 'failed', error: 'REJECTED', nextAttemptAt: now() + 300000 };
             } else patch = { status: 'sent', sentAt: now(), error: null };
@@ -93,7 +96,7 @@ module.exports = function orderEmails(db, { env = process.env, createTransport =
   function status(order, kind, records) {
     const record = records[order.id + ':' + kind];
     if (record) return { status: record.status, attempts: record.attempts, sentAt: record.sentAt || null, nextAttemptAt: record.nextAttemptAt || null, error: record.error || null };
-    return { status: !eligible(order) ? 'not_scheduled' : !allowed(order) ? 'sandbox_off' : kind === 'buyer' && order.paypalEnv === 'live' && !validEmail(order.customer?.email) ? 'missing_email' : !ready ? 'not_configured' : 'queued', attempts: 0 };
+    return { status: !eligible(order) ? 'not_scheduled' : !allowed(order) ? 'sandbox_off' : kind === 'buyer' && buyerUsesCustomerEmail(order) && !validEmail(order.customer?.email) ? 'missing_email' : !ready ? 'not_configured' : 'queued', attempts: 0 };
   }
 };
 module.exports.message = message;

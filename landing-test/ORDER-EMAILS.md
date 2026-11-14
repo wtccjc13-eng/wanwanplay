@@ -18,6 +18,7 @@ In the **Node.js website's Environment Variables** (not the mailbox settings), a
 | MAIL_FROM | play@wanwanplay.com |
 | MAIL_TO | play@wanwanplay.com |
 | MAIL_SANDBOX_ENABLED | false (or true for the isolated sandbox test below) |
+| MAIL_SANDBOX_BUYER_ENABLED | false by default; true to test the buyer's actual email |
 
 This is the mailbox password, not the hPanel account password. Never send it in chat, add it to Git or enable SMTP debug logs. SMTP uses TLS with certificate verification; port 587 is also supported with required STARTTLS. `BASE_URL` must be your HTTPS origin, normally `https://wanwanplay.com`. Deploy with `npm ci` for the new Nodemailer dependency and restart after settings changes. Changing MAIL_TO / MAIL_FROM later requires only environment-variable edits and a restart.
 
@@ -26,10 +27,14 @@ Check the email domain's SPF/DKIM status in Hostinger; do not overwrite existing
 ## Test before live sending
 
 1. Keep PayPal in sandbox. Set MAIL_ENABLED=true and MAIL_SANDBOX_ENABLED=true with working SMTP settings.
-2. Make a **new** sandbox order. Both messages are labeled SANDBOX TEST and go **only to MAIL_TO**, never the sandbox buyer's entered email. The buyer version still uses the checkout language and order details. Expect two distinct messages at play@wanwanplay.com.
+2. Make a **new** sandbox order. By default both messages are labeled SANDBOX TEST and go **only to MAIL_TO**. The buyer version still uses the checkout language and order details. Expect two distinct messages at play@wanwanplay.com.
 3. Within approximately 15 seconds (longer during SMTP trouble / backlog), open that paid order in the backoffice. Its **Order emails** section shows buyer/team states separately. Reopen the order to refresh.
 4. Refresh the payment confirmation and redeliver the PayPal event: ordinary retries must not send another copy. Check both inbox and spam folders.
 5. Set MAIL_SANDBOX_ENABLED=false after testing. Live PayPal orders send the buyer copy to the email returned by PayPal and the team copy to MAIL_TO. If PayPal returns no usable buyer email, buyer delivery is flagged and the team alert still goes out. Unknown order environments are not emailed.
+
+To test a buyer confirmation in a separate real inbox, set **both** MAIL_SANDBOX_ENABLED=true and MAIL_SANDBOX_BUYER_ENABLED=true, then restart. Only the buyer copy goes to the customer email returned by PayPal and shown in the backoffice; the team alert still goes to MAIL_TO. There is no separate buyer email field on our website. The PayPal sandbox account/form must return a real inbox you control; an automatically generated sandbox/example address will not receive real email. A missing or invalid buyer email is flagged; the team alert can still send. Both messages retain the SANDBOX TEST label and state that no live purchase occurred.
+
+Use a new sandbox order for this routing test. Changing routing settings does not resend an already accepted notification. An explicitly failed notification can be retried with the existing Retry failed emails button, using the current routing settings; uncertain notifications remain held. Set both sandbox flags back to false when testing is finished. Live buyer routing is unchanged.
 
 ## Reliability and operations
 

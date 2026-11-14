@@ -60,6 +60,27 @@ test('missing settings hold notifications; sandbox is opt-in and redirects both 
   await emails(db, { env: { ...env, MAIL_SANDBOX_ENABLED: 'true' }, createTransport: factory }).run();
   assert.equal(sent.length, 2); for (const mail of sent) { assert.equal(mail.to.address, env.MAIL_TO); assert.match(mail.subject, /SANDBOX TEST/); }
 });
+test('sandbox buyer opt-in uses the PayPal email, preserves team routing and never resends accepted notifications', async t => {
+  const { db } = await fixture(t), sent = [];
+  const item = { ...order(), paypalEnv: 'sandbox' }; await db.saveOrder(item); await db.markPaid(item.id, 'FAKE');
+  const factory = () => ({ sendMail: async mail => { sent.push(mail); return { accepted: [mail.to.address] }; } });
+  const directEnv = { ...env, MAIL_SANDBOX_BUYER_ENABLED: 'true' };
+  await emails(db, { env: directEnv, createTransport: factory }).run();
+  assert.equal(sent.length, 0); // The general sandbox email opt-in is still required.
+  await emails(db, { env: { ...directEnv, MAIL_SANDBOX_ENABLED: 'true' }, createTransport: factory }).run();
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].to.address, item.customer.email); assert.equal(sent[1].to.address, env.MAIL_TO);
+  for (const mail of sent) { assert.match(mail.subject, /SANDBOX TEST/); assert.match(mail.text, /no live purchase/); assert.doesNotMatch(mail.text + mail.html, /redirected/); }
+  await emails(db, { env: { ...env, MAIL_SANDBOX_ENABLED: 'true' }, createTransport: factory }).run();
+  assert.equal(sent.length, 2);
+});
+test('sandbox direct-buyer mode flags missing PayPal email while still alerting the team', async t => {
+  const { db } = await fixture(t), sent = [], item = { ...order(), paypalEnv: 'sandbox' };
+  delete item.customer.email; await db.saveOrder(item); await db.markPaid(item.id, 'FAKE');
+  const worker = emails(db, { env: { ...env, MAIL_SANDBOX_ENABLED: 'true', MAIL_SANDBOX_BUYER_ENABLED: 'true' }, createTransport: () => ({ sendMail: async mail => { sent.push(mail); return { accepted: [mail.to.address] }; } }) });
+  await worker.run(); assert.equal(sent.length, 1); assert.equal(sent[0].to.address, env.MAIL_TO);
+  assert.equal((await worker.statuses([await db.getOrder(item.id)])).WWDEMO.buyer.status, 'missing_email');
+});
 test('explicit failures retry independently up to five attempts, then admin retry can recover', async t => {
   const { db } = await fixture(t); await db.saveOrder(order()); await db.markPaid('WWDEMO', 'FAKE');
   let clock = 1000000, fail = true, buyerAttempts = 0, teamAttempts = 0;
