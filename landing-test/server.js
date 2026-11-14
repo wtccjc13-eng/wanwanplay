@@ -47,6 +47,8 @@ const paypal = require('./paypal')(db);
 const CHECKOUT_READY = paypal.ready && !(process.env.VERCEL && !USE_REDIS);
 const { DeliveryError } = require('./recipient');
 const promos = require('./promos')(db);
+const orderEmails = require('./order-emails')(db);
+orderEmails.start();
 
 // Erreur à code stable : le navigateur traduit le message selon la langue
 class ApiError extends Error {
@@ -87,7 +89,7 @@ app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); nex
 app.use(express.json({ limit: '128kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
-require('./admin')(app, db, paypal.env, promos);
+require('./admin')(app, db, paypal.env, promos, orderEmails);
 
 app.get('/api/config', (_req, res) => {
   res.json({ productName: PRODUCT_NAME, priceCents: PRICE_CENTS, shippingCents: SHIPPING_CENTS, freeShippingMinQty: 2, simulation: false, provider: CHECKOUT_READY ? 'paypal' : 'none', checkoutReady: CHECKOUT_READY, paypalEnv: paypal.env, paypalClientId: CHECKOUT_READY ? paypal.clientId : null });
@@ -128,6 +130,7 @@ app.post('/api/checkout', async (req, res) => {
     const checkoutToken = crypto.randomBytes(32).toString('hex');
     const order = { id: 'WW' + crypto.randomBytes(16).toString('hex').toUpperCase(),
       status: 'pending', provider: 'paypal', paypalEnv: paypal.env, lang: req.body.lang === 'en' ? 'en' : 'zh',
+      notificationVersion: 1,
       createdAt: new Date().toISOString(), ...totals, promoCode: totals.code, customer: {},
       deliveryStatus: 'awaiting_paypal',
       checkoutTokenHash: paypal.tokenHash(checkoutToken) };

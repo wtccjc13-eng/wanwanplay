@@ -98,3 +98,9 @@ Deploy the feature branch with npm ci (adds google-auth-library). In /backoffice
 To enable fetching, configure GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY privately in Hostinger environment variables, restart, enable Google Sheets API and share the sheet with that account as Viewer. Never paste the JSON key into GitHub or chat. Read GOOGLE-SHEETS-PROMOS.md for the template and full instructions. Existing codes remain viewable before Google is configured.
 
 Keep DATA_DIR unchanged. Back up promo-state.json and promo-config.json with existing data while the single-process file-backed app is stopped. Short-lived promo-previews.json need not be restored. Redis remains optional; existing paid-use counters and order records are preserved. Verify one preview/apply against the real private sheet after configuring access; automated tests use a fake sheet.
+
+## Buyer and team email notifications
+
+Deploy with npm ci for Nodemailer. Configure SMTP_HOST=smtp.hostinger.com, SMTP_PORT=465, SMTP_USER=play@wanwanplay.com, SMTP_PASSWORD privately (mailbox password), MAIL_FROM=play@wanwanplay.com, MAIL_TO=play@wanwanplay.com and MAIL_ENABLED=true. Preserve all existing environment variables. Restart, then test a new sandbox order with MAIL_SANDBOX_ENABLED=true: both labeled test messages go only to MAIL_TO. Set it back to false afterward. See ORDER-EMAILS.md for the complete setup. Real inbox delivery is not proven until this test passes.
+
+Back up order-notifications.json with the existing DATA_DIR files; preserve Redis order-mail:* keys if using Redis. Do not delete these records during redeploys. Email state is visible in order details; Retry failed emails retries only explicit failures, not accepted or uncertain messages. Historical orders are not emailed automatically.

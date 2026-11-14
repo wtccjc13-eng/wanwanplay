@@ -1,7 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const money = cents => new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format((cents || 0) / 100);
-const date = value => value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+const date = value => { const timestamp = typeof value === 'number' ? value : Date.parse(value); return value && Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'; };
 const label = value => ({ unfulfilled: 'Unfulfilled', packing: 'Packing', shipped: 'Shipped', on_hold: 'On hold', paid: 'Paid', pending: 'Pending', failed: 'Failed', unknown: 'Unclassified', real: 'Real order', test: 'Test order' })[value] || value;
 let csrf = '', page = 1, total = 0, current = null, listSequence = 0, detailSequence = 0, saving = false;
 const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
@@ -77,6 +77,7 @@ async function openOrder(id) {
     const order = await (await api('/orders/' + encodeURIComponent(id))).json();
     if (sequence !== detailSequence || !csrf) return;
     current = order;
+    renderEmails(order);
     $('detail-title').textContent = 'A little adventure, ready?'; $('detail-reference').textContent = order.id;
     $('detail-badges').replaceChildren(badge(label(order.status), order.status), badge(order.provider), badge(order.paymentEnv === 'unknown' ? 'Environment unknown' : order.paymentEnv));
     if (order.deliveryStatus === 'needs_attention') $('detail-badges').append(badge('Delivery needs review', 'failed'));
@@ -124,6 +125,27 @@ $('management-form').addEventListener('submit', async event => {
   finally { saving = false; $('save-order').disabled = false; }
 });
 $('close-detail').addEventListener('click', () => { if (!saving) $('detail').close(); });
+function renderEmails(order) {
+  const notification = order.notifications || {};
+  const states = { sent: 'Accepted by mail server', sending: 'Sending', queued: 'Queued', failed: 'Failed', uncertain: 'Uncertain — review mailbox before resending',
+    not_scheduled: 'Not scheduled (unpaid or historical order)', sandbox_off: 'Sandbox emails disabled', missing_email: 'PayPal did not provide a usable email', not_configured: 'SMTP is not configured / enabled' };
+  $('email-statuses').replaceChildren(); $('email-message').textContent = '';
+  for (const kind of ['buyer', 'team']) {
+    const entry = notification[kind] || { status: 'not_scheduled' };
+    const line = node('p'); line.append(node('strong', kind === 'buyer' ? 'Buyer: ' : 'Team: '), node('span', states[entry.status] || entry.status));
+    if (entry.sentAt) line.append(node('small', date(entry.sentAt)));
+    if (entry.status === 'failed') line.append(node('small', entry.attempts >= 5 ? 'Automatic retries exhausted. Fix SMTP settings, then retry.' : 'Will retry automatically; attempts: ' + entry.attempts + '/5.'));
+    $('email-statuses').append(line);
+  }
+  $('retry-emails').hidden = !notification.ready || !['buyer', 'team'].some(kind => notification[kind]?.status === 'failed');
+}
+$('retry-emails').addEventListener('click', async () => {
+  if (!current) return;
+  const id = current.id; $('retry-emails').disabled = true; $('email-message').textContent = 'Queuing failed emails…';
+  try { await api('/orders/' + encodeURIComponent(id) + '/retry-emails', { method: 'POST', body: '{}' }); await openOrder(id); $('email-message').textContent = 'Retry queued. Reopen the order shortly to refresh email status.'; }
+  catch (error) { $('email-message').textContent = error.message; }
+  finally { $('retry-emails').disabled = false; }
+});
 $('detail').addEventListener('cancel', event => { if (saving) event.preventDefault(); });
 let debounce;
 $('search').addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(() => { page = 1; load(); }, 250); });

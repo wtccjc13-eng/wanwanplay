@@ -19,7 +19,7 @@ const auth = order => ({ Authorization: 'Bearer ' + order.checkoutToken });
 async function app(env) {
   const child = spawn(process.execPath, ['-e', "const app=require('./server');const s=app.listen(0,'127.0.0.1',()=>console.log('READY:'+s.address().port));"], {
     cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NODE_ENV: 'test', VERCEL: '',
-      PRICE_EUR: '19.90', SINGLE_DECK_SHIPPING_EUR: '0', PAYPAL_ENV: 'sandbox',
+      MAIL_ENABLED: 'false', PRICE_EUR: '19.90', SINGLE_DECK_SHIPPING_EUR: '0', PAYPAL_ENV: 'sandbox',
       PAYPAL_CLIENT_ID: crypto.randomUUID(), PAYPAL_CLIENT_SECRET: crypto.randomUUID(),
       PAYPAL_WEBHOOK_ID: 'test-webhook', PAYPAL_MERCHANT_ID: 'TESTMERCHANT', ADMIN_PASSWORD: 'test-only-order-backoffice-password',
       UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '', KV_REST_API_URL: '', KV_REST_API_TOKEN: '', ...env },
@@ -157,6 +157,7 @@ test('server totals, authorization, capture retries, duplicate webhooks and rest
   const orders = JSON.parse(await fs.readFile(path.join(f.dir, 'orders.json'), 'utf8'));
   assert.deepEqual(orders.WWOLD, legacy);
   assert.equal(orders[order.orderId].paypalCaptureId, 'CAP-' + order.paypalOrderId);
+  assert.equal(orders[order.orderId].notificationVersion, 1);
   assert.equal(orders[order.orderId].checkoutToken, undefined);
   assert.equal(JSON.parse(await fs.readFile(path.join(f.dir, 'promo-uses.json'), 'utf8')).TEST10, 1);
   assert.equal((await fetch(f.base + '/api/orders/' + order.orderId)).status, 404);

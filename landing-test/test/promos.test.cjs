@@ -95,7 +95,7 @@ test('protected import routes update checkout quotes immediately and survive res
   async function start() {
     const code = `const fs=require('node:fs');const p=require.resolve('./google-sheets');require.cache[p]={id:p,filename:p,loaded:true,exports:()=>({email:'demo@example.invalid',credentialsReady:true,read:async()=>JSON.parse(fs.readFileSync(process.env.TEST_SHEET,'utf8'))})};const app=require('./server');const s=app.listen(0,'127.0.0.1',()=>console.log('READY:'+s.address().port));`;
     const child = spawn(process.execPath, ['-e', code], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env,
-      NODE_ENV: 'test', DATA_DIR: dir, TEST_SHEET: fixture, ADMIN_PASSWORD: 'test-only-admin-password-123', BASE_URL: 'http://localhost:3000',
+      MAIL_ENABLED: 'false', NODE_ENV: 'test', DATA_DIR: dir, TEST_SHEET: fixture, ADMIN_PASSWORD: 'test-only-admin-password-123', BASE_URL: 'http://localhost:3000',
       VERCEL: '', PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: '', PAYPAL_CLIENT_SECRET: '', PAYPAL_MERCHANT_ID: '', PAYPAL_WEBHOOK_ID: '',
       UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '', KV_REST_API_URL: '', KV_REST_API_TOKEN: '' } });
     let output = '';

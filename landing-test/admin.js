@@ -6,7 +6,7 @@ const same = (a, b) => crypto.timingSafeEqual(Buffer.from(hash(a)), Buffer.from(
 const validId = id => /^WW[A-Z0-9]{1,64}$/.test(id);
 const defaults = { fulfillment: 'unfulfilled', carrier: '', trackingNumber: '', notes: '', archived: false, orderType: 'unknown', version: 0 };
 
-module.exports = function admin(app, db, paymentEnv, promos) {
+module.exports = function admin(app, db, paymentEnv, promos, orderEmails) {
   const password = process.env.ADMIN_PASSWORD || '';
   const enabled = password.length >= 16;
   const cookieName = 'ww_admin';
@@ -99,8 +99,9 @@ module.exports = function admin(app, db, paymentEnv, promos) {
   async function allOrders(query) {
     const orders = (await db.listOrders()).filter(order => order && validId(order.id));
     const records = await db.getManagement(orders.map(order => order.id));
+    const notifications = await orderEmails.statuses(orders);
     const search = String(query.search || '').slice(0, 200).trim().toLowerCase();
-    return orders.map(order => present(order, records[order.id])).filter(order => {
+    return orders.map(order => ({ ...present(order, records[order.id]), notifications: notifications[order.id] })).filter(order => {
       const meta = order.management;
       if (query.payment && query.payment !== 'all' && order.status !== query.payment) return false;
       if (query.fulfillment && query.fulfillment !== 'all' && meta.fulfillment !== query.fulfillment) return false;
@@ -136,7 +137,15 @@ module.exports = function admin(app, db, paymentEnv, promos) {
   router.get('/orders/:id', safe(async (req, res) => {
     const order = validId(req.params.id) ? await db.getOrder(req.params.id) : null;
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    const records = await db.getManagement([order.id]); res.json(present(order, records[order.id]));
+    const records = await db.getManagement([order.id]);
+    const notifications = await orderEmails.statuses([order]);
+    res.json({ ...present(order, records[order.id]), notifications: notifications[order.id] });
+  }));
+  router.post('/orders/:id/retry-emails', safe(async (req, res) => {
+    const order = validId(req.params.id) ? await db.getOrder(req.params.id) : null;
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (!await orderEmails.retry(order)) return res.status(409).json({ error: 'Email sending is not configured or this order is not eligible.' });
+    res.json({ ok: true });
   }));
   router.patch('/orders/:id', safe(async (req, res) => {
     const order = validId(req.params.id) ? await db.getOrder(req.params.id) : null;

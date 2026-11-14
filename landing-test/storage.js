@@ -32,6 +32,77 @@ module.exports = function storage(dataDir, redis) {
     recover();
   }
   return {
+    async getNotifications(ids) {
+      if (!redis) return read('order-notifications.json');
+      const result = {};
+      const keys = ids.flatMap(id => [id + ':buyer', id + ':team']);
+      for (let i = 0; i < keys.length; i += 100) {
+        const batch = keys.slice(i, i + 100), values = await redis('MGET', ...batch.map(key => 'order-mail:' + key));
+        values.forEach((raw, index) => { if (raw) result[batch[index]] = JSON.parse(raw); });
+      }
+      return result;
+    },
+    async claimNotification(key, token, now, recipient) {
+      const value = { status: 'sending', token, leaseUntil: now + 120000, updatedAt: now, recipient };
+      if (redis) return redis('EVAL', `
+        local raw = redis.call('GET', KEYS[1])
+        local current = raw and cjson.decode(raw) or {attempts=0}
+        if current.status == 'sending' then
+          if current.leaseUntil <= tonumber(ARGV[1]) then
+            current.status = 'uncertain'
+            current.error = 'INTERRUPTED'
+            current.token = nil
+            redis.call('SET', KEYS[1], cjson.encode(current))
+          end
+          return 0
+        end
+        if current.status and current.status ~= 'failed' then return 0 end
+        if current.attempts >= 5 or (current.nextAttemptAt or 0) > tonumber(ARGV[1]) then return 0 end
+        local value = cjson.decode(ARGV[2])
+        value.attempts = current.attempts + 1
+        redis.call('SET', KEYS[1], cjson.encode(value))
+        return 1
+      `, 1, 'order-mail:' + key, String(now), JSON.stringify(value));
+      const records = read('order-notifications.json'), current = records[key];
+      if (current?.status === 'sending') {
+        if (current.leaseUntil <= now) { current.status = 'uncertain'; current.error = 'INTERRUPTED'; delete current.token; write('order-notifications.json', records); }
+        return 0;
+      }
+      if (current && (current.status !== 'failed' || current.attempts >= 5 || current.nextAttemptAt > now)) return 0;
+      records[key] = { ...value, attempts: (current?.attempts || 0) + 1 }; write('order-notifications.json', records); return 1;
+    },
+    async finishNotification(key, token, patch) {
+      if (redis) return redis('EVAL', `
+        local raw = redis.call('GET', KEYS[1])
+        if not raw then return 0 end
+        local current = cjson.decode(raw)
+        if current.status ~= 'sending' or current.token ~= ARGV[1] then return 0 end
+        local patch = cjson.decode(ARGV[2])
+        for k,v in pairs(patch) do current[k] = v end
+        current.token = nil
+        current.leaseUntil = nil
+        redis.call('SET', KEYS[1], cjson.encode(current))
+        return 1
+      `, 1, 'order-mail:' + key, token, JSON.stringify(patch));
+      const records = read('order-notifications.json'), current = records[key];
+      if (!current || current.status !== 'sending' || current.token !== token) return 0;
+      Object.assign(current, patch); delete current.token; delete current.leaseUntil; write('order-notifications.json', records); return 1;
+    },
+    async retryNotification(key) {
+      if (redis) return redis('EVAL', `
+        local raw = redis.call('GET', KEYS[1])
+        if not raw then return 0 end
+        local current = cjson.decode(raw)
+        if current.status ~= 'failed' then return 0 end
+        current.attempts = 0
+        current.nextAttemptAt = 0
+        redis.call('SET', KEYS[1], cjson.encode(current))
+        return 1
+      `, 1, 'order-mail:' + key);
+      const records = read('order-notifications.json'), current = records[key];
+      if (current?.status !== 'failed') return 0;
+      current.attempts = 0; current.nextAttemptAt = 0; write('order-notifications.json', records); return 1;
+    },
     async getPromoState() {
       if (!redis) return read('promo-state.json', null);
       const raw = await redis('GET', 'wanwan:promos:state'); return raw ? JSON.parse(raw) : null;

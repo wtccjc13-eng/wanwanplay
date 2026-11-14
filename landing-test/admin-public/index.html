@@ -49,6 +49,7 @@
     <p id="detail-reference" class="reference"></p><div id="detail-badges" class="badges"></div>
     <section class="recipient"><h3>Deliver to</h3><strong id="recipient-name"></strong><p id="recipient-address"></p><div id="recipient-contact"></div></section>
     <dl id="order-facts" class="facts"></dl>
+    <section class="email-notifications"><h3>Order emails</h3><div id="email-statuses"></div><p class="footnote">“Accepted” means the outgoing mail server accepted the message; inbox delivery is not confirmed. Uncertain sends are held for review to avoid duplicates.</p><button id="retry-emails" type="button" hidden>Retry failed emails</button><p id="email-message" class="message" role="status"></p></section>
     <form id="management-form">
       <h3>Prepare this order</h3><div class="two-columns"><label>Fulfillment<select id="edit-fulfillment"><option value="unfulfilled">Unfulfilled</option><option value="packing">Packing</option><option value="shipped">Shipped</option><option value="on_hold">On hold</option></select></label><label>Order type<select id="edit-type"><option value="unknown">Unclassified</option><option value="test">Test order</option><option value="real">Real order</option></select></label></div>
       <div class="two-columns"><label>Carrier<input id="edit-carrier" maxlength="80" placeholder="e.g. La Poste"></label><label>Tracking number<input id="edit-tracking" maxlength="150"></label></div>

@@ -19,7 +19,7 @@ const metadata = { fulfillment: 'packing', carrier: 'Test carrier', trackingNumb
 async function start(dir, overrides = {}) {
   const child = spawn(process.execPath, ['-e', "const app=require('./server');const s=app.listen(0,'127.0.0.1',()=>console.log('READY:'+s.address().port));"], {
     cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NODE_ENV: 'test', BASE_URL: 'http://localhost:3000',
-      ADMIN_PASSWORD: password, DATA_DIR: dir, VERCEL: '', PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: '', PAYPAL_CLIENT_SECRET: '',
+      MAIL_ENABLED: 'false', ADMIN_PASSWORD: password, DATA_DIR: dir, VERCEL: '', PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: '', PAYPAL_CLIENT_SECRET: '',
       PAYPAL_MERCHANT_ID: '', PAYPAL_WEBHOOK_ID: '', UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '',
       KV_REST_API_URL: '', KV_REST_API_TOKEN: '', ...overrides },
   });
@@ -57,6 +57,7 @@ const patch = body => ({ method: 'PATCH', body: JSON.stringify(body) });
 test('admin data requires authentication, rejects CSRF and redacts checkout secrets', async t => {
   const f = await fixture(t);
   for (const route of ['/orders', '/orders/WWPAID', '/orders/export.csv', '/session']) assert.equal((await f.request(route)).status, 401);
+  assert.equal((await f.request('/orders/WWPAID/retry-emails', { method: 'POST', body: '{}' })).status, 401);
   assert.equal((await f.request('/orders/WWPAID', patch(metadata))).status, 401);
   assert.equal((await f.request('/login', { method: 'POST', body: JSON.stringify({ password: 'wrong' }) })).status, 401);
   assert.equal((await f.request('/login', { method: 'POST', body: JSON.stringify({ password }), headers: { Origin: 'https://attacker.invalid' } })).status, 403);
@@ -67,6 +68,10 @@ test('admin data requires authentication, rejects CSRF and redacts checkout secr
   assert.equal(JSON.parse(body).orders.length, 2);
   assert.equal(body.includes('checkoutTokenHash'), false); assert.equal(body.includes('private-hash'), false);
   assert.equal((await f.request('/orders/WWPAID', { ...patch(metadata), headers: { 'X-CSRF-Token': 'bad' } })).status, 403);
+  assert.equal((await f.request('/orders/WWPAID/retry-emails', { method: 'POST', body: '{}', headers: { 'X-CSRF-Token': 'bad' } })).status, 403);
+  assert.equal((await f.request('/orders/WWPAID/retry-emails', { method: 'POST', body: '{}' })).status, 409);
+  const detail = await (await f.request('/orders/WWPAID')).json();
+  assert.equal(detail.notifications.buyer.status, 'not_scheduled');
   const shell = await fetch(f.base + '/backoffice/');
   assert.equal(shell.status, 200); assert.match(shell.headers.get('content-security-policy'), /frame-ancestors 'none'/);
   assert.equal((await shell.text()).includes('buyer@example.invalid'), false);
@@ -144,6 +149,7 @@ test('Redis listing supports existing keys; metadata edits do not overwrite paym
 
 test('backoffice browser flow signs in, shows an order and saves fulfillment separately', async t => {
   const f = await fixture(t), elements = new Map();
+  await fs.writeFile(path.join(f.dir, 'order-notifications.json'), JSON.stringify({ 'WWPAID:buyer': { status: 'sent', attempts: 1, sentAt: Date.now() } }));
   function make(tag) {
     return { tag, value: '', textContent: '', checked: false, hidden: false, disabled: false, children: [], listeners: {},
       options: [], append(...nodes) { this.children.push(...nodes); }, replaceChildren(...nodes) { this.children = nodes; },
@@ -168,6 +174,8 @@ test('backoffice browser flow signs in, shows an order and saves fulfillment sep
   get('orders').children[0].children[0].children[0].listeners.click();
   await settle(() => get('detail').open);
   assert.equal(get('recipient-name').textContent, 'Example Recipient');
+  assert.equal(get('email-statuses').children[0].children[1].textContent, 'Accepted by mail server');
+  assert.notEqual(get('email-statuses').children[0].children[2].textContent, '—');
   get('edit-fulfillment').value = 'packing'; get('edit-type').value = 'test';
   get('edit-notes').value = '<script>not executable</script>'; get('edit-carrier').value = 'Example'; get('edit-tracking').value = 'TRACK';
   await get('management-form').listeners.submit({ preventDefault() {} });
